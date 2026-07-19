@@ -8,6 +8,7 @@ interface Barrier {
     body: GameObjects.Rectangle;
     lane: number;
     speed: number;
+    swooshPlayed: boolean;
 }
 
 interface GameStartData { stage?: number; }
@@ -37,6 +38,7 @@ export class Game extends Scene {
     private speedText!: GameObjects.Text;
     private boostText!: GameObjects.Text;
     private music?: Sound.BaseSound;
+    private flightSound?: Sound.BaseSound;
     private leftKey!: Input.Keyboard.Key;
     private rightKey!: Input.Keyboard.Key;
     private aKey!: Input.Keyboard.Key;
@@ -150,17 +152,18 @@ export class Game extends Scene {
         this.spawnElapsed = 0;
         const blockedLane = this.lane + PhaserMath.Between(-1, 1);
         const body = this.add.rectangle(this.laneX(blockedLane), -30, 178, 30, PINK).setStrokeStyle(3, 0xffd1e8);
-        this.barriers.push({ body, lane: blockedLane, speed: this.currentSpeed() });
+        this.barriers.push({ body, lane: blockedLane, speed: this.currentSpeed(), swooshPlayed: false });
         if (PhaserMath.Between(0, 100) < 30 + this.speedLevel * 4) {
             const secondLane = this.lane + PhaserMath.Between(-2, 2);
             const second = this.add.rectangle(this.laneX(secondLane), -91, 178, 30, PINK).setStrokeStyle(3, 0xffd1e8);
-            this.barriers.push({ body: second, lane: secondLane, speed: this.currentSpeed() });
+            this.barriers.push({ body: second, lane: secondLane, speed: this.currentSpeed(), swooshPlayed: false });
         }
     }
 
     private moveBarriers(delta: number): void {
         this.barriers = this.barriers.filter(barrier => {
             barrier.body.y += barrier.speed * delta;
+            this.playNearMissSwoosh(barrier);
             if (barrier.body.y > HEIGHT + 50) { barrier.body.destroy(); return false; }
             if (barrier.lane === this.lane && Math.abs(barrier.body.y - this.ship.y) < 48 && this.time.now > this.shieldUntil) {
                 this.hitBarrier(barrier);
@@ -168,6 +171,14 @@ export class Game extends Scene {
             }
             return true;
         });
+    }
+
+    private playNearMissSwoosh(barrier: Barrier): void {
+        const isNearShip = Math.abs(barrier.lane - this.lane) <= 1 && barrier.body.y > this.ship.y + 22;
+        if (!barrier.swooshPlayed && isNearShip) {
+            barrier.swooshPlayed = true;
+            if (this.game.registry.get('effectsOn') !== false) this.sound.play('swoosh', { volume: 0.24 });
+        }
     }
 
     private hitBarrier(barrier: Barrier): void {
@@ -186,7 +197,7 @@ export class Game extends Scene {
         const nextLevel = Math.floor(this.elapsed / every);
         if (nextLevel > this.speedLevel) {
             this.speedLevel = nextLevel;
-            if (this.game.registry.get('effectsOn') !== false) this.sound.play('boost', { volume: 0.42 });
+            if (this.game.registry.get('effectsOn') !== false) this.sound.play('surge', { volume: 0.42 });
             this.cameras.main.flash(160, 49, 245, 255, false);
             this.flashMessage('VELOCITY SURGE!', CYAN);
         }
@@ -197,6 +208,7 @@ export class Game extends Scene {
         if (this.isEnding) return;
         this.isEnding = true;
         this.music?.stop();
+        this.flightSound?.stop();
         const message = cleared ? (this.stage >= 5 ? 'ALL FACTORIES CLEARED!' : `STAGE ${this.stage} CLEARED!`) : 'SHIP DESTROYED';
         this.add.rectangle(512, 384, 780, 215, 0x06142b, 0.96).setStrokeStyle(4, cleared ? CYAN : PINK).setScrollFactor(0);
         this.add.text(512, 350, message, { ...this.hudStyle(37), color: cleared ? '#d9fdff' : '#ff7fbd' }).setOrigin(0.5).setScrollFactor(0);
@@ -214,6 +226,7 @@ export class Game extends Scene {
         if (this.isEnding || this.isPaused) return;
         this.isPaused = true;
         this.music?.pause();
+        this.flightSound?.pause();
         const shade = this.add.rectangle(512, 384, WIDTH, HEIGHT, 0x01030a, 0.88).setScrollFactor(0).setInteractive();
         const panel = this.add.rectangle(512, 384, 520, 315, 0x0b1c35, 1).setStrokeStyle(4, CYAN).setScrollFactor(0);
         const title = this.add.text(512, 292, 'PAUSED', { ...this.hudStyle(38), color: '#ffffff' }).setOrigin(0.5).setScrollFactor(0);
@@ -225,18 +238,25 @@ export class Game extends Scene {
             [shade, panel, title, resume, hangar, resumeText, hangarText].forEach(item => item.destroy());
             this.isPaused = false;
             this.music?.resume();
+            this.flightSound?.resume();
         };
         resume.on('pointerdown', close);
         hangar.on('pointerdown', () => {
             this.music?.stop();
+            this.flightSound?.stop();
             this.scene.start('MainMenu');
         });
     }
 
     private playStageMusic(): void {
-        if (this.game.registry.get('musicOn') === false) return;
-        this.music = this.sound.add(`stage-${this.stage}`, { volume: 0.3, loop: true });
-        this.music.play();
+        if (this.game.registry.get('musicOn') !== false) {
+            this.music = this.sound.add(`stage-${this.stage}`, { volume: 0.3, loop: true });
+            this.music.play();
+        }
+        if (this.game.registry.get('effectsOn') !== false) {
+            this.flightSound = this.sound.add('flight', { volume: 0.16, loop: true });
+            this.flightSound.play();
+        }
     }
 
     private showStageIntro(): void {

@@ -52,7 +52,8 @@ pnpm cf:dev
 ## Audio credits
 
 - Music: [Multifaros — The Factory](https://freemusicarchive.org/music/Multifaros/The_Factory/)
-- Sound effects: [freesound_community](https://pixabay.com/pt/users/freesound_community-46691455/)
+- Sound effects: [freesound_community](https://pixabay.com/pt/users/freesound_community-46691455/) (ship flight and velocity surge)
+- Sound effects: [universfield](https://pixabay.com/pt/users/universfield-28281460/) (barrier near-miss swoosh)
 
 ## License
 

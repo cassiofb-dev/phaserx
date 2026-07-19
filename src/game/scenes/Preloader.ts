@@ -31,7 +31,9 @@ export class Preloader extends Scene
     {
         this.load.setPath('assets');
         this.load.image('logo', 'logo.png');
-        this.load.audio('boost', 'fx/freesound_community-boom-36120.mp3');
+        this.load.audio('swoosh', 'fx/universfield-fast-swoosh-05-192895.mp3');
+        this.load.audio('flight', 'fx/freesound_community-spaceship-flight-94906.mp3');
+        this.load.audio('surge', 'fx/freesound_community-bassindi4-heavy-108351.mp3');
         this.load.audio('stage-1', 'sounds/Multifaros - The Factory/01 Multifaros - The Boss.mp3');
         this.load.audio('stage-2', 'sounds/Multifaros - The Factory/02 Multifaros - The Staff.mp3');
         this.load.audio('stage-3', 'sounds/Multifaros - The Factory/03 Multifaros - The Product.mp3');
