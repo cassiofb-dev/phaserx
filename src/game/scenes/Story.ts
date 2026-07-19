@@ -1,4 +1,5 @@
 import { Scene } from 'phaser';
+import { GlassPanel } from '../objects/ui/GlassPanel';
 
 type StoryMode = 'briefing' | 'outcome';
 
@@ -29,72 +30,72 @@ const PINK = 0xff3da5;
 export const PHASE_STORIES: Record<number, PhaseStory> = {
     1: {
         title: 'THE BOSS', subtitle: 'PHASE 01 // THE FIRST BREACH',
-        briefing: 'A company owns every planet and abuses the workers who keep it running. The player steals a ship and flies toward the boss who ordered the abuse.',
-        dialogue: '“The boss sees workers as numbers. Make the company see the player.”',
+        briefing: 'A mega-corporation owns every outer colony and exploits the workers who keep it running. You hijack a swift interceptor and fly straight toward the regional director.',
+        dialogue: '“The director sees workers as line items. Make the company feel your presence.”',
         startChoices: [
-            { label: 'BROADCAST THE PAYROLL GRAVES', consequence: 'Every worker hears the truth before the raid begins.', value: 'mercy' },
-            { label: 'STAY DARK AND HUNT VEYR', consequence: 'You preserve surprise, but leave the workers in the dark.', value: 'rage' }
+            { label: 'BROADCAST PAYROLL RECORDS', consequence: 'Every worker hears the raw truth before the assault begins.', value: 'mercy' },
+            { label: 'STAY DARK AND HUNT TARGET', consequence: 'You preserve total element of surprise, leaving workers uninformed.', value: 'rage' }
         ],
-        outcome: 'The boss is defeated. The company loses its first leader, and the workers learn that it can be hurt.',
+        outcome: 'The regional director is overthrown. The corporation suffers its first breach, and workers learn the regime can bleed.',
         endChoices: [
-            { label: 'RELEASE THE CONFESSION', consequence: 'The boss’s final words become a signal for every planet.', value: 'mercy' },
-            { label: 'TAKE HIS ACCESS CODES', consequence: 'You turn his authority into a key for deeper violence.', value: 'rage' }
+            { label: 'RELEASE THE CONFESSION', consequence: 'The director’s final logs spark uprisings across every planet.', value: 'mercy' },
+            { label: 'SEIZE COMMAND ACCESS CODES', consequence: 'You convert corporate security overrides into weapons of war.', value: 'rage' }
         ]
     },
     2: {
-        title: 'THE STAFF', subtitle: 'PHASE 02 // FRIENDS IN THE CROSSHAIRS',
-        briefing: 'The top staff try to protect the company after the boss falls. Coworkers are told to stop the player or lose what little safety they have.',
-        dialogue: '“The coworkers call the player crazy because they are afraid of the company.”',
+        title: 'THE STAFF', subtitle: 'PHASE 02 // COWORKERS IN CROSSHAIRS',
+        briefing: 'Station directors mobilize corporate staff to contain the rebellion. Former coworkers are ordered to intercept your ship or forfeit their survival rations.',
+        dialogue: '“They call you an outlaw because they are terrified of corporate retaliation.”',
         startChoices: [
-            { label: 'SEND A PLEA TO THE STAFF', consequence: 'You ask your old coworkers to stand aside and survive.', value: 'mercy' },
-            { label: 'BREACH THE LOCKDOWN SILENTLY', consequence: 'You treat every intercepted ship as an enemy.', value: 'rage' }
+            { label: 'TRANSMIT PLEA TO STAFF', consequence: 'You urge old colleagues to step aside and survive the fallout.', value: 'mercy' },
+            { label: 'BREACH LOCKDOWN SILENTLY', consequence: 'You treat every incoming defensive interceptor as an hostile target.', value: 'rage' }
         ],
-        outcome: 'The staff is defeated. Some coworkers stand down, while others still believe the company is the only life they can have.',
+        outcome: 'The staff fleet retreats. Some technicians stand down while diehards defend the broken hierarchy.',
         endChoices: [
-            { label: 'OPEN AN ESCAPE CORRIDOR', consequence: 'Those who surrender can leave the station alive.', value: 'mercy' },
-            { label: 'ERASE THE STAFF ROSTERS', consequence: 'The company loses its chain of command forever.', value: 'rage' }
+            { label: 'OPEN ESCAPE CORRIDOR', consequence: 'Surrendering personnel are allowed to abandon station alive.', value: 'mercy' },
+            { label: 'PURGE STAFF ROSTERS', consequence: 'The corporation’s local chain of command is erased forever.', value: 'rage' }
         ]
     },
     3: {
-        title: 'THE PRODUCT', subtitle: 'PHASE 03 // THE MACHINES THAT OWNED WORLDS',
-        briefing: 'The company products control homes, food, work, and travel on every planet. The player reaches the product vaults and must decide what should remain after the destruction.',
-        dialogue: '“The products are cages, but some workers still need them to survive.”',
+        title: 'THE PRODUCT', subtitle: 'PHASE 03 // AUTOMATED REPRESSION',
+        briefing: 'Corporate automated systems manage life support, transit, and food distribution. Reaching the product engine core forces a decision on what remains.',
+        dialogue: '“These machines are cages, yet millions rely on them to breathe tomorrow.”',
         startChoices: [
-            { label: 'SABOTAGE THE CONTROL NETWORK', consequence: 'You disable the chains while preserving essential machines.', value: 'mercy' },
-            { label: 'OVERLOAD EVERY PRODUCT VAULT', consequence: 'You choose a total, irreversible purge.', value: 'rage' }
+            { label: 'SABOTAGE CONTROL NETWORK', consequence: 'You sever monitoring telemetry while preserving civilian life support.', value: 'mercy' },
+            { label: 'OVERLOAD PRODUCT VAULTS', consequence: 'You trigger total, irreversible destruction of all corporate assets.', value: 'rage' }
         ],
-        outcome: 'The products stop working. Workers can finally move without the company watching every step.',
+        outcome: 'The monitoring grid collapses. Outer colonies experience total dark-mode freedom from corporate surveillance.',
         endChoices: [
-            { label: 'PUBLISH THE REPAIR SCHEMATICS', consequence: 'Communities can rebuild the useful machines themselves.', value: 'mercy' },
-            { label: 'BURN THE BLUEPRINT ARCHIVE', consequence: 'No one can rebuild the company’s machinery of control.', value: 'rage' }
+            { label: 'PUBLISH OPEN SCHEMATICS', consequence: 'Local engineers can now repair and adapt essential machinery.', value: 'mercy' },
+            { label: 'BURN BLUEPRINT ARCHIVE', consequence: 'No faction will ever rebuild the machinery of total surveillance.', value: 'rage' }
         ]
     },
     4: {
         title: 'THE COMPANY', subtitle: 'PHASE 04 // THE EMPTY THRONE',
-        briefing: 'The company headquarters holds the records that let it own planets and control workers. The player enters the last command center to end that power.',
-        dialogue: '“Destroying the company is easier than deciding what comes next.”',
+        briefing: 'Corporate high command holds planetary titles and indenture bonds. Breaching headquarters allows you to dismantle their legal reign.',
+        dialogue: '“Dismantling corporate HQ is simpler than choosing what fills the vacuum.”',
         startChoices: [
-            { label: 'SEIZE THE DEEDS AND DEBT RECORDS', consequence: 'You prepare evidence to return stolen planets to their people.', value: 'mercy' },
-            { label: 'DRIVE STRAIGHT FOR THE REACTOR', consequence: 'You make the company’s symbol disappear in fire.', value: 'rage' }
+            { label: 'SEIZE DEED & DEBT ARCHIVES', consequence: 'You secure legal evidence to return stolen worlds to their inhabitants.', value: 'mercy' },
+            { label: 'OVERLOAD COMMAND REACTOR', consequence: 'You reduce corporate headquarters to a towering monument of flame.', value: 'rage' }
         ],
-        outcome: 'The headquarters falls. The company no longer has one place from which to rule the planets.',
+        outcome: 'Corporate command collapses. No centralized authority remains to enforce planetary debt collection.',
         endChoices: [
-            { label: 'SEND THE DEEDS TO THE PLANETS', consequence: 'You give each planet proof that it was never company property.', value: 'mercy' },
-            { label: 'SCUTTLE THE VAULT WITH HQ', consequence: 'You deny everyone the old system’s records and revenge.', value: 'rage' }
+            { label: 'TRANSMIT DEEDS TO COLONIES', consequence: 'Each system receives proof of their absolute independence.', value: 'mercy' },
+            { label: 'SCUTTLE VAULT WITH STATION', consequence: 'You deny everyone access to past records or systemic vengeance.', value: 'rage' }
         ]
     },
     5: {
         title: 'THE FACTORY', subtitle: 'PHASE 05 // WHERE THE BELT WAS BUILT',
-        briefing: 'The original factory is still trapping workers below the planet. It makes the products that keep the company alive, and it is the player’s final target.',
-        dialogue: '“Workers are still inside. If the factory falls, give them a way out.”',
+        briefing: 'The central factory complex continues assembly below the crust. It is the heart of corporate power and your final operational target.',
+        dialogue: '“Colonies wait on the surface. When the factory falls, show them the sky.”',
         startChoices: [
-            { label: 'OPEN THE WORKER EVACUATION GATES', consequence: 'You risk the assault to give every trapped worker a path outside.', value: 'mercy' },
-            { label: 'TARGET THE FACTORY CORE', consequence: 'You race to end the company before it can rebuild itself.', value: 'rage' }
+            { label: 'OPEN EVACUATION GATES', consequence: 'You hold line position so trapped workers can reach surface shuttles.', value: 'mercy' },
+            { label: 'TARGET MAIN FUSION CORE', consequence: 'You rush the core to eliminate corporate infrastructure instantly.', value: 'rage' }
         ],
-        outcome: 'The factory stops. The player reaches the final switch while every worker waits for the last choice.',
+        outcome: 'The core shuts down. You stand at the master terminal as the outer worlds await your final transmission.',
         endChoices: [
-            { label: 'OPEN THE GATES AND WALK AWAY', consequence: 'The workers inherit a damaged but living future.', value: 'mercy' },
-            { label: 'COLLAPSE THE FACTORY FOREVER', consequence: 'The company dies in flame, and the planets must survive its ashes.', value: 'rage' }
+            { label: 'UNLOCK GATES & WALK AWAY', consequence: 'The colonies inherit a scarred but self-determined future.', value: 'mercy' },
+            { label: 'COLLAPSE FACTORY FOREVER', consequence: 'Corporate power dies in fire, leaving colonies to forge a new dawn.', value: 'rage' }
         ]
     }
 };
@@ -111,61 +112,121 @@ export class Story extends Scene {
     }
 
     create(): void {
+        this.cameras.main.setBackgroundColor(0x0a1c3f);
+
         const phase = PHASE_STORIES[this.stage];
-        this.drawBackdrop();
-        this.add.text(512, 68, this.mode === 'briefing' ? phase.subtitle : `PHASE ${String(this.stage).padStart(2, '0')} // AFTERMATH`, this.labelStyle(17)).setOrigin(0.5);
-        this.add.text(512, 115, this.mode === 'briefing' ? phase.title : 'THE CHOICE AFTER', { ...this.labelStyle(36), color: '#ffffff' }).setOrigin(0.5);
-        const body = this.mode === 'briefing' ? `${phase.briefing}\n\n${phase.dialogue}` : phase.outcome;
-        this.add.text(512, 284, body, { fontFamily: 'monospace', fontSize: 17, color: '#d8f5ff', align: 'center', wordWrap: { width: 790 }, lineSpacing: 7 }).setOrigin(0.5);
-        this.add.text(512, 465, this.mode === 'briefing' ? 'CHOOSE HOW TO ENTER THIS PHASE' : 'CHOOSE WHAT THE REBELLION LEAVES BEHIND', this.labelStyle(15)).setOrigin(0.5);
+
+        // Central Transmission Panel
+        new GlassPanel(this, 512, 384, 880, 710, CYAN, 0x0f2c52, 0.98);
+
+        // Header
+        this.add.text(
+            512,
+            68,
+            this.mode === 'briefing' ? phase.subtitle : `PHASE ${String(this.stage).padStart(2, '0')} // AFTERMATH TRANSMISSION`,
+            this.headerStyle(16, '#31f5ff')
+        ).setOrigin(0.5);
+
+        this.add.text(
+            512,
+            115,
+            this.mode === 'briefing' ? phase.title : 'THE REBELLION DECISION',
+            { ...this.headerStyle(34, '#ffffff'), stroke: '#082a4d', strokeThickness: 5 }
+        ).setOrigin(0.5);
+
+        // Narrative Body
+        const bodyText = this.mode === 'briefing' ? `${phase.briefing}\n\n${phase.dialogue}` : phase.outcome;
+        this.add.text(512, 280, bodyText, {
+            fontFamily: 'monospace',
+            fontSize: 17,
+            color: '#ffffff',
+            align: 'center',
+            wordWrap: { width: 790 },
+            lineSpacing: 7
+        }).setOrigin(0.5);
+
+        // Decision Header
+        this.add.text(
+            512,
+            460,
+            this.mode === 'briefing' ? 'CHOOSE YOUR OPERATIONAL STRATEGY' : 'CHOOSE WHAT THE REBELLION LEAVES BEHIND',
+            this.headerStyle(15, '#8ec3eb')
+        ).setOrigin(0.5);
+
         const choices = this.mode === 'briefing' ? phase.startChoices : phase.endChoices;
-        this.addChoice(300, 565, choices[0], () => this.select(choices[0]));
-        this.addChoice(724, 565, choices[1], () => this.select(choices[1]));
-        this.add.text(512, 706, this.mode === 'briefing' ? 'YOUR DECISIONS SHAPE THE FINAL TRANSMISSION.' : 'THE BELT WILL REMEMBER THIS.', this.labelStyle(14)).setOrigin(0.5);
+        this.addChoiceCard(300, 565, choices[0], () => this.selectChoice(choices[0]));
+        this.addChoiceCard(724, 565, choices[1], () => this.selectChoice(choices[1]));
+
+        this.add.text(
+            512,
+            706,
+            this.mode === 'briefing' ? 'YOUR STRATEGIC CHOICE SHAPES THE FINAL TRANSMISSION.' : 'THE COLONIES WILL REMEMBER THIS DIRECTIVE.',
+            this.headerStyle(13, '#8ec3eb')
+        ).setOrigin(0.5);
     }
 
-    private select(choice: StoryChoice): void {
+    private selectChoice(choice: StoryChoice): void {
         const choices = (this.game.registry.get('storyChoices') as StoryChoice[] | undefined) ?? [];
         choices.push(choice);
         this.game.registry.set('storyChoices', choices);
+
         if (this.mode === 'briefing') {
             this.scene.start('Game', { stage: this.stage });
             return;
         }
+
         const unlocked = (this.game.registry.get('unlockedStage') as number | undefined) ?? 1;
         this.game.registry.set('unlockedStage', Math.max(unlocked, Math.min(5, this.stage + 1)));
+
         if (this.stage < 5) {
             this.scene.start('MainMenu', { showPhaseSelector: true });
             return;
         }
-        const mercy = choices.filter(entry => entry.value === 'mercy').length;
-        const ending = mercy >= 6 ? 'THE OPEN SKY' : mercy <= 3 ? 'THE ASHEN BELT' : 'THE UNFINISHED DAWN';
+
+        const mercyCount = choices.filter(c => c.value === 'mercy').length;
+        const ending = mercyCount >= 6 ? 'THE OPEN SKY' : mercyCount <= 3 ? 'THE ASHEN BELT' : 'THE UNFINISHED DAWN';
         this.scene.start('GameOver', { cleared: true, stage: this.stage, ending });
     }
 
-    private addChoice(x: number, y: number, choice: StoryChoice, action: () => void): void {
-        const color = choice.value === 'mercy' ? 0x155775 : 0x5b1947;
-        const border = choice.value === 'mercy' ? CYAN : PINK;
-        const card = this.add.rectangle(x, y, 372, 166, color, 0.98).setStrokeStyle(3, border).setInteractive({ useHandCursor: true });
-        const title = this.add.text(x, y - 40, choice.label, { fontFamily: 'monospace', fontSize: 17, fontStyle: 'bold', color: '#ffffff', align: 'center', wordWrap: { width: 330 } }).setOrigin(0.5);
-        const detail = this.add.text(x, y + 25, choice.consequence, { fontFamily: 'monospace', fontSize: 13, color: '#d8f5ff', align: 'center', wordWrap: { width: 326 }, lineSpacing: 4 }).setOrigin(0.5);
-        card.on('pointerover', () => { card.setFillStyle(border, 0.72); title.setColor('#ffffff'); });
-        card.on('pointerout', () => card.setFillStyle(color, 0.98));
-        card.on('pointerdown', action);
-        detail.setInteractive({ useHandCursor: true }).on('pointerdown', action);
-        title.setInteractive({ useHandCursor: true }).on('pointerdown', action);
+    private addChoiceCard(x: number, y: number, choice: StoryChoice, action: () => void): void {
+        const isMercy = choice.value === 'mercy';
+        const borderColor = isMercy ? CYAN : PINK;
+        const bgColor = isMercy ? 0x14496b : 0x611b49;
+
+        const panel = new GlassPanel(this, x, y, 372, 166, borderColor, bgColor, 0.98);
+
+        const titleText = this.add.text(x, y - 42, choice.label, {
+            fontFamily: 'monospace',
+            fontSize: 16,
+            fontStyle: 'bold',
+            color: '#ffffff',
+            align: 'center',
+            wordWrap: { width: 330 }
+        }).setOrigin(0.5);
+
+        const detailText = this.add.text(x, y + 22, choice.consequence, {
+            fontFamily: 'monospace',
+            fontSize: 13,
+            color: '#ffffff',
+            align: 'center',
+            wordWrap: { width: 326 },
+            lineSpacing: 4
+        }).setOrigin(0.5);
+
+        const clickArea = this.add.rectangle(x, y, 372, 166, 0x000000, 0)
+            .setInteractive({ useHandCursor: true });
+
+        clickArea.on('pointerover', () => {
+            this.tweens.add({ targets: panel.container, scaleX: 1.04, scaleY: 1.04, duration: 100 });
+            if (this.game.registry.get('effectsOn') !== false) this.sound.play('swoosh', { volume: 0.15 });
+        });
+        clickArea.on('pointerout', () => {
+            this.tweens.add({ targets: panel.container, scaleX: 1.0, scaleY: 1.0, duration: 100 });
+        });
+        clickArea.on('pointerdown', action);
     }
 
-    private drawBackdrop(): void {
-        this.cameras.main.setBackgroundColor(0x030713);
-        const graphics = this.add.graphics();
-        graphics.fillStyle(0x06172c, 1).fillRect(80, 30, 864, 708);
-        graphics.lineStyle(3, CYAN, 0.7).strokeRect(80, 30, 864, 708);
-        graphics.lineStyle(1, 0x1d6382, 0.35);
-        for (let y = 155; y < 730; y += 38) graphics.lineBetween(88, y, 936, y);
-    }
-
-    private labelStyle(size: number): Phaser.Types.GameObjects.Text.TextStyle {
-        return { fontFamily: 'monospace', fontSize: size, fontStyle: 'bold', color: '#79bcd5', stroke: '#06142b', strokeThickness: 3 };
+    private headerStyle(size: number, color: string): Phaser.Types.GameObjects.Text.TextStyle {
+        return { fontFamily: 'monospace', fontSize: size, fontStyle: 'bold', color };
     }
 }

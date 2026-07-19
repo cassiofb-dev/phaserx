@@ -1,8 +1,11 @@
 import { GameObjects, Scene } from 'phaser';
+import { GridBackground } from '../objects/GridBackground';
+import { Button } from '../objects/ui/Button';
+import { GlassPanel } from '../objects/ui/GlassPanel';
 
-type Difficulty = 'easy' | 'medium' | 'hard' | 'hardcore';
+export type Difficulty = 'easy' | 'medium' | 'hard' | 'hardcore';
 
-interface DifficultyRule {
+export interface DifficultyRule {
     label: string;
     lives: number;
     speedEvery: number;
@@ -19,146 +22,251 @@ export const DIFFICULTIES: Record<Difficulty, DifficultyRule> = {
 const CYAN = 0x31f5ff;
 const PINK = 0xff3da5;
 
-export class MainMenu extends Scene
-{
-    background!: GameObjects.Image;
-    title!: GameObjects.Text;
-    selectedDifficulty: Difficulty = 'medium';
-    musicOn = true;
-    effectsOn = true;
+export class MainMenu extends Scene {
+    private gridBg!: GridBackground;
+    private titleText!: GameObjects.Text;
+    private selectedDifficulty: Difficulty = 'medium';
+    private musicOn = true;
+    private effectsOn = true;
     private showPhases = false;
+    private difficultyButtons: Record<Difficulty, Button | null> = { easy: null, medium: null, hard: null, hardcore: null };
 
-    constructor ()
-    {
+    constructor() {
         super('MainMenu');
     }
 
-    init (data: { showPhaseSelector?: boolean }): void
-    {
+    init(data: { showPhaseSelector?: boolean }): void {
         this.showPhases = data.showPhaseSelector ?? false;
+        this.selectedDifficulty = (this.game.registry.get('difficulty') as Difficulty) ?? 'medium';
+        this.musicOn = (this.game.registry.get('musicOn') as boolean) ?? true;
+        this.effectsOn = (this.game.registry.get('effectsOn') as boolean) ?? true;
     }
 
-    create ()
-    {
-        this.drawBackdrop();
-        this.title = this.add.text(512, 78, 'PHASERX', {
-            fontFamily: 'monospace', fontSize: 56, fontStyle: 'bold', color: '#d9fdff',
-            align: 'center', stroke: '#083c68', strokeThickness: 7
-        }).setOrigin(0.5);
-        this.tweens.add({ targets: this.title, alpha: { from: 0.72, to: 1 }, duration: 750, yoyo: true, repeat: -1 });
+    create(): void {
+        this.cameras.main.setBackgroundColor(0x0a1c3f);
 
-        this.add.text(512, 142, 'DODGE // SURVIVE // ACCELERATE', {
-            fontFamily: 'monospace', fontSize: 18, color: '#31f5ff'
-        }).setOrigin(0.5);
+        // Synthwave 3D perspective grid background with planets and stars
+        this.gridBg = new GridBackground(this);
+
+        // Animated neon floating Title
+        this.titleText = this.add.text(512, 78, 'PHASERX', {
+            fontFamily: 'monospace',
+            fontSize: 62,
+            fontStyle: 'bold',
+            color: '#ffffff',
+            align: 'center',
+            stroke: '#08487e',
+            strokeThickness: 8
+        }).setOrigin(0.5).setDepth(10);
+
+        this.tweens.add({
+            targets: this.titleText,
+            scaleX: 1.04,
+            scaleY: 1.04,
+            alpha: { from: 0.88, to: 1 },
+            duration: 850,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.easeInOut'
+        });
+
+        this.add.text(512, 138, 'DODGE // SURVIVE // ACCELERATE', {
+            fontFamily: 'monospace',
+            fontSize: 16,
+            fontStyle: 'bold',
+            color: '#31f5ff'
+        }).setOrigin(0.5).setDepth(10);
 
         if (this.showPhases) {
             this.createPhaseSelector();
             return;
         }
 
-        this.addButton(512, 235, 'START', () => {
-            this.game.registry.set('difficulty', this.selectedDifficulty);
-            this.game.registry.set('musicOn', this.musicOn);
-            this.game.registry.set('effectsOn', this.effectsOn);
+        // Start / Launch Run Button
+        new Button(this, 512, 230, 'START MISSION', () => {
+            this.saveRegistryOptions();
             this.scene.restart({ showPhaseSelector: true });
-        }, 270, PINK);
+        }, 280, PINK, CYAN, 50).setDepth(10);
 
-        this.add.text(512, 322, 'DIFFICULTY', this.smallStyle()).setOrigin(0.5);
+        // Difficulty Selector header & option buttons
+        this.add.text(512, 312, 'SELECT DIFFICULTY', this.subHeaderStyle()).setOrigin(0.5).setDepth(10);
         const options = Object.keys(DIFFICULTIES) as Difficulty[];
-        options.forEach((difficulty, index) => {
-            const x = 250 + index * 175;
-            const button = this.addButton(x, 366, DIFFICULTIES[difficulty].label, () => {
-                this.selectedDifficulty = difficulty;
-                this.scene.restart();
-            }, 150, difficulty === this.selectedDifficulty ? CYAN : 0x173454, 34);
-            if (difficulty === this.selectedDifficulty) button.setStrokeStyle(3, 0xffffff);
+        options.forEach((diffKey, idx) => {
+            const x = 250 + idx * 175;
+            const isSelected = diffKey === this.selectedDifficulty;
+            const btn = new Button(
+                this,
+                x,
+                356,
+                DIFFICULTIES[diffKey].label,
+                () => {
+                    this.selectedDifficulty = diffKey;
+                    this.saveRegistryOptions();
+                    this.scene.restart();
+                },
+                154,
+                isSelected ? CYAN : 0x12365e,
+                isSelected ? 0xffffff : 0x31f5ff,
+                38
+            );
+            btn.setDepth(10);
+            this.difficultyButtons[diffKey] = btn;
         });
 
+        // Difficulty Rule Description
         const rule = DIFFICULTIES[this.selectedDifficulty];
-        this.add.text(512, 423, `${rule.lives} LIFE${rule.lives > 1 ? 'S' : ''}  //  BOOST EACH ${rule.speedEvery}S  //  STAGE: ${this.formatTime(rule.goal)}`, {
-            fontFamily: 'monospace', fontSize: 15, color: '#c4d9ee'
-        }).setOrigin(0.5);
+        this.add.text(
+            512,
+            415,
+            `${rule.lives} LIFE${rule.lives > 1 ? 'S' : ''}  //  SURGE EACH ${rule.speedEvery}S  //  STAGE GOAL: ${this.formatTime(rule.goal)}`,
+            { fontFamily: 'monospace', fontSize: 14, fontStyle: 'bold', color: '#ffffff' }
+        ).setOrigin(0.5).setDepth(10);
 
-        this.addButton(292, 506, 'HOW TO PLAY', () => this.showGuide(), 260, 0x173454);
-        this.addButton(732, 506, `SOUNDTRACK: ${this.musicOn ? 'ON' : 'OFF'}`, () => {
-            this.musicOn = !this.musicOn;
-            this.scene.restart();
-        }, 320, 0x173454);
-        this.addButton(512, 563, `EFFECTS: ${this.effectsOn ? 'ON' : 'OFF'}`, () => {
-            this.effectsOn = !this.effectsOn;
-            this.scene.restart();
-        }, 260, 0x173454);
+        // Options Row
+        new Button(this, 292, 498, 'PILOT GUIDE', () => this.showGuide(), 250, 0x12365e).setDepth(10);
+        new Button(
+            this,
+            732,
+            498,
+            `AUDIO TRACK: ${this.musicOn ? 'ON' : 'OFF'}`,
+            () => {
+                this.musicOn = !this.musicOn;
+                this.saveRegistryOptions();
+                this.scene.restart();
+            },
+            310,
+            0x12365e
+        ).setDepth(10);
 
-        this.add.text(512, 687, '5 STAGES  •  EACH WITH ITS OWN FACTORY TRANSMISSION', this.smallStyle()).setOrigin(0.5);
-        this.add.text(512, 716, 'A / D  or  ← / →  TO CHANGE LANES', { ...this.smallStyle(), color: '#ffffff' }).setOrigin(0.5);
+        new Button(
+            this,
+            512,
+            556,
+            `SOUND FX: ${this.effectsOn ? 'ON' : 'OFF'}`,
+            () => {
+                this.effectsOn = !this.effectsOn;
+                this.saveRegistryOptions();
+                this.scene.restart();
+            },
+            250,
+            0x12365e
+        ).setDepth(10);
+
+        // Footer info text
+        this.add.text(512, 685, '5 FACTORY STAGES  •  DYNAMIC TRANSMISSIONS', this.subHeaderStyle()).setOrigin(0.5).setDepth(10);
+        this.add.text(512, 714, 'A / D  OR  ← / →  TO CHANGE LANES', { ...this.subHeaderStyle(), color: '#ffffff' }).setOrigin(0.5).setDepth(10);
     }
 
-    private createPhaseSelector (): void {
+    update(_time: number, delta: number): void {
+        this.gridBg?.update(delta / 1000, 200);
+    }
+
+    private saveRegistryOptions(): void {
+        this.game.registry.set('difficulty', this.selectedDifficulty);
+        this.game.registry.set('musicOn', this.musicOn);
+        this.game.registry.set('effectsOn', this.effectsOn);
+    }
+
+    private createPhaseSelector(): void {
         const unlockedStage = (this.game.registry.get('unlockedStage') as number | undefined) ?? 1;
-        this.add.text(512, 202, 'SELECT PHASE', { fontFamily: 'monospace', fontSize: 28, fontStyle: 'bold', color: '#ffffff' }).setOrigin(0.5);
-        this.add.text(512, 237, `PHASES UNLOCKED: ${unlockedStage} / 5`, this.smallStyle()).setOrigin(0.5);
+
+        this.add.text(512, 195, 'SELECT TRANSMISSION PHASE', {
+            fontFamily: 'monospace',
+            fontSize: 24,
+            fontStyle: 'bold',
+            color: '#ffffff'
+        }).setOrigin(0.5).setDepth(10);
+
+        this.add.text(512, 230, `UNLOCKED STAGES: ${unlockedStage} / 5`, this.subHeaderStyle()).setOrigin(0.5).setDepth(10);
 
         for (let stage = 1; stage <= 5; stage++) {
             const x = 152 + (stage - 1) * 180;
-            const available = stage <= unlockedStage;
-            const color = available ? (stage === unlockedStage ? PINK : 0x173e64) : 0x101827;
-            const card = this.add.rectangle(x, 380, 150, 205, color, 0.96).setStrokeStyle(3, available ? CYAN : 0x30445c);
-            const status = stage < unlockedStage ? 'CLEARED' : (available ? 'READY' : 'LOCKED');
-            const statusColor = available ? '#bafcff' : '#52627a';
-            this.add.text(x, 330, `PHASE\n0${stage}`, { fontFamily: 'monospace', fontSize: 22, fontStyle: 'bold', color: available ? '#ffffff' : '#52627a', align: 'center' }).setOrigin(0.5);
-            this.add.text(x, 425, status, { fontFamily: 'monospace', fontSize: 15, fontStyle: 'bold', color: statusColor }).setOrigin(0.5);
-            this.add.text(x, 465, available ? `TRACK 0${stage}` : 'COMPLETE\nPREVIOUS', { fontFamily: 'monospace', fontSize: 12, color: statusColor, align: 'center' }).setOrigin(0.5);
-            if (available) {
-                card.setInteractive({ useHandCursor: true });
-                card.on('pointerover', () => card.setFillStyle(PINK));
-                card.on('pointerout', () => card.setFillStyle(color));
-                card.on('pointerdown', () => this.startPhase(stage));
+            const isAvailable = stage <= unlockedStage;
+            const isCurrent = stage === unlockedStage;
+            const strokeColor = isAvailable ? (isCurrent ? PINK : CYAN) : 0x30445c;
+
+            const card = new GlassPanel(this, x, 375, 154, 210, strokeColor, isAvailable ? 0x0f2d54 : 0x0a1a33, 0.95);
+            card.setDepth(10);
+
+            const status = stage < unlockedStage ? 'CLEARED' : (isAvailable ? 'READY' : 'LOCKED');
+            const statusColor = isAvailable ? '#ffffff' : '#6b8aa8';
+
+            this.add.text(x, 320, `PHASE\n0${stage}`, {
+                fontFamily: 'monospace',
+                fontSize: 22,
+                fontStyle: 'bold',
+                color: isAvailable ? '#ffffff' : '#6b8aa8',
+                align: 'center'
+            }).setOrigin(0.5).setDepth(11);
+
+            this.add.text(x, 415, status, {
+                fontFamily: 'monospace',
+                fontSize: 14,
+                fontStyle: 'bold',
+                color: statusColor
+            }).setOrigin(0.5).setDepth(11);
+
+            this.add.text(x, 455, isAvailable ? `TRACK 0${stage}` : 'LOCKED\nPREVIOUS', {
+                fontFamily: 'monospace',
+                fontSize: 12,
+                color: statusColor,
+                align: 'center'
+            }).setOrigin(0.5).setDepth(11);
+
+            if (isAvailable) {
+                const clickArea = this.add.rectangle(x, 375, 154, 210, 0x000000, 0)
+                    .setInteractive({ useHandCursor: true })
+                    .setDepth(12);
+
+                clickArea.on('pointerover', () => {
+                    this.tweens.add({ targets: card.container, scaleX: 1.05, scaleY: 1.05, duration: 120 });
+                    if (this.effectsOn) this.sound.play('swoosh', { volume: 0.15 });
+                });
+                clickArea.on('pointerout', () => {
+                    this.tweens.add({ targets: card.container, scaleX: 1.0, scaleY: 1.0, duration: 120 });
+                });
+                clickArea.on('pointerdown', () => this.startPhase(stage));
             }
         }
 
-        this.addButton(512, 620, 'BACK', () => this.scene.restart({ showPhaseSelector: false }), 190, 0x173454);
-        this.add.text(512, 687, 'BEAT A PHASE TO UNLOCK THE NEXT FACTORY TRANSMISSION', this.smallStyle()).setOrigin(0.5);
+        new Button(this, 512, 615, 'BACK', () => this.scene.restart({ showPhaseSelector: false }), 190, 0x12365e).setDepth(10);
+        this.add.text(512, 685, 'CLEAR EACH PHASE TO UNLOCK DEEPER FACTORY TRANSMISSIONS', this.subHeaderStyle()).setOrigin(0.5).setDepth(10);
     }
 
-    private startPhase (stage: number): void {
-        if (!this.scale.isFullscreen) this.scale.startFullscreen();
+    private startPhase(stage: number): void {
         if (stage === 1) this.game.registry.set('storyChoices', []);
         this.scene.start('Story', { stage, mode: 'briefing' });
     }
 
-    private drawBackdrop (): void {
-        this.cameras.main.setBackgroundColor(0x030713);
-        const grid = this.add.graphics();
-        grid.lineStyle(1, 0x0e426a, 0.62);
-        for (let y = 120; y < 768; y += 42) grid.lineBetween(0, y, 1024, y);
-        for (let x = 0; x <= 1024; x += 64) grid.lineBetween(x, 120, 512 + (x - 512) * 0.22, 768);
-        grid.lineStyle(3, CYAN, 0.38).lineBetween(0, 120, 1024, 120);
-        for (let i = 0; i < 18; i++) this.add.rectangle(28 + i * 58, 132 + (i % 4) * 128, 3, 20 + (i % 3) * 13, CYAN, 0.3);
+    private showGuide(): void {
+        const shade = this.add.rectangle(512, 384, 1024, 768, 0x051229, 0.82).setInteractive().setDepth(20);
+        const panel = new GlassPanel(this, 512, 384, 720, 410, CYAN, 0x0d284a, 0.98);
+        panel.setDepth(21);
+
+        const title = this.add.text(512, 220, 'PILOT FLIGHT DIRECTIVE', {
+            fontFamily: 'monospace', fontSize: 24, fontStyle: 'bold', color: '#31f5ff'
+        }).setOrigin(0.5).setDepth(22);
+
+        const copy = this.add.text(
+            512,
+            370,
+            'CHANGE LANES with A / D  or  ← / →\nDODGE every hazard barrier streaming from above.\n\nA hit damages hull integrity and activates temporary shield.\nSurvive the timer to clear each corporate factory phase.\nVelocity surges trigger engine boost and UI shockwaves.\n\n[ CLICK ANYWHERE TO CLOSE ]',
+            { fontFamily: 'monospace', fontSize: 17, color: '#ffffff', align: 'center', lineSpacing: 8 }
+        ).setOrigin(0.5).setDepth(22);
+
+        shade.once('pointerdown', () => {
+            shade.destroy();
+            panel.destroy();
+            title.destroy();
+            copy.destroy();
+        });
     }
 
-    private addButton (x: number, y: number, label: string, action: () => void, width: number, color: number, height = 46): GameObjects.Rectangle {
-        const button = this.add.rectangle(x, y, width, height, color, 0.88).setStrokeStyle(2, 0x5fefff).setInteractive({ useHandCursor: true });
-        const text = this.add.text(x, y, label, { fontFamily: 'monospace', fontSize: 17, fontStyle: 'bold', color: '#ffffff' }).setOrigin(0.5);
-        button.on('pointerover', () => { button.setFillStyle(PINK, 1); text.setColor('#ffffff'); });
-        button.on('pointerout', () => button.setFillStyle(color, 0.88));
-        button.on('pointerdown', action);
-        return button;
+    private subHeaderStyle(): Phaser.Types.GameObjects.Text.TextStyle {
+        return { fontFamily: 'monospace', fontSize: 14, fontStyle: 'bold', color: '#8ec3eb' };
     }
 
-    private showGuide (): void {
-        const shade = this.add.rectangle(512, 384, 1024, 768, 0x01030a, 0.9).setInteractive();
-        const panel = this.add.rectangle(512, 384, 700, 395, 0x0b1c35, 0.98).setStrokeStyle(4, CYAN);
-        const copy = this.add.text(512, 350, 'PILOT GUIDE\n\nCHANGE LANES with A / D or LEFT / RIGHT.\nDODGE every red barrier streaming from above.\n\nA hit costs a life and grants a brief shield.\nSurvive the timer to enter the next factory stage.\nSpeed surges trigger a boom and a UI shockwave.\n\nCLICK ANYWHERE TO RETURN', {
-            fontFamily: 'monospace', fontSize: 19, color: '#dcf9ff', align: 'center', lineSpacing: 5
-        }).setOrigin(0.5);
-        shade.once('pointerdown', () => { shade.destroy(); panel.destroy(); copy.destroy(); });
-    }
-
-    private smallStyle (): Phaser.Types.GameObjects.Text.TextStyle {
-        return { fontFamily: 'monospace', fontSize: 15, color: '#7da9c8' };
-    }
-
-    private formatTime (seconds: number): string {
+    private formatTime(seconds: number): string {
         return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
     }
 }
