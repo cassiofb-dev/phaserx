@@ -122,7 +122,8 @@ export class MainMenu extends Scene
 
     private startPhase (stage: number): void {
         if (!this.scale.isFullscreen) this.scale.startFullscreen();
-        this.scene.start('Game', { stage });
+        if (stage === 1) this.game.registry.set('storyChoices', []);
+        this.scene.start('Story', { stage, mode: 'briefing' });
     }
 
     private drawBackdrop (): void {

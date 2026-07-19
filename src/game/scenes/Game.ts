@@ -1,5 +1,6 @@
 import { GameObjects, Input, Math as PhaserMath, Scene, Sound } from 'phaser';
 import { DIFFICULTIES } from './MainMenu';
+import { PHASE_STORIES } from './Story';
 
 type Difficulty = keyof typeof DIFFICULTIES;
 
@@ -17,8 +18,7 @@ const LANE_WIDTH = 210;
 const CYAN = 0x31f5ff;
 const PINK = 0xff3da5;
 
-export class Game extends Scene
-{
+export class Game extends Scene {
     private stage = 1;
     private difficulty: Difficulty = 'medium';
     private elapsed = 0;
@@ -45,13 +45,11 @@ export class Game extends Scene
     private isEnding = false;
     private isPaused = false;
 
-    constructor ()
-    {
+    constructor() {
         super('Game');
     }
 
-    init (data: GameStartData): void
-    {
+    init(data: GameStartData): void {
         this.stage = data.stage ?? 1;
         this.difficulty = (this.game.registry.get('difficulty') as Difficulty) ?? 'medium';
         this.lives = DIFFICULTIES[this.difficulty].lives;
@@ -65,8 +63,7 @@ export class Game extends Scene
         this.isPaused = false;
     }
 
-    create (): void
-    {
+    create(): void {
         this.cameras.main.setBackgroundColor(0x020611);
         this.cameras.main.scrollX = 0;
         this.drawTrack();
@@ -77,8 +74,7 @@ export class Game extends Scene
         this.showStageIntro();
     }
 
-    update (_time: number, delta: number): void
-    {
+    update(_time: number, delta: number): void {
         if (this.isEnding || this.isPaused) return;
         const deltaSeconds = Math.min(delta, 50) / 1000;
         this.elapsed += deltaSeconds;
@@ -91,7 +87,7 @@ export class Game extends Scene
         this.cameras.main.scrollX = this.ship.x - WIDTH / 2;
     }
 
-    private drawTrack (): void {
+    private drawTrack(): void {
         const g = this.add.graphics();
         g.fillStyle(0x06172c, 1).fillRect(-100000, 0, 200000, HEIGHT);
         g.lineStyle(2, 0x1d6382, 0.8);
@@ -103,7 +99,7 @@ export class Game extends Scene
         }
     }
 
-    private createHud (): void {
+    private createHud(): void {
         const bar = this.add.rectangle(512, 40, 990, 64, 0x07162b, 0.96).setStrokeStyle(2, CYAN).setScrollFactor(0);
         this.timerText = this.add.text(512, 39, '', this.hudStyle(27)).setOrigin(0.5).setScrollFactor(0);
         this.livesText = this.add.text(34, 39, '', this.hudStyle(18)).setOrigin(0, 0.5).setScrollFactor(0);
@@ -116,7 +112,7 @@ export class Game extends Scene
         this.tweens.add({ targets: bar, alpha: { from: 0.85, to: 1 }, duration: 600, yoyo: true, repeat: -1 });
     }
 
-    private createShip (): void {
+    private createShip(): void {
         this.shipGlow = this.add.rectangle(this.laneX(this.lane), 654, 104, 16, CYAN, 0.18);
         const graphics = this.add.graphics();
         graphics.fillStyle(0x31f5ff, 1).fillTriangle(0, -42, -31, 31, 31, 31);
@@ -128,7 +124,7 @@ export class Game extends Scene
         this.tweens.add({ targets: this.ship, y: 642, duration: 260, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
     }
 
-    private createInput (): void {
+    private createInput(): void {
         this.leftKey = this.input.keyboard!.addKey(Input.Keyboard.KeyCodes.LEFT);
         this.rightKey = this.input.keyboard!.addKey(Input.Keyboard.KeyCodes.RIGHT);
         this.aKey = this.input.keyboard!.addKey(Input.Keyboard.KeyCodes.A);
@@ -141,14 +137,14 @@ export class Game extends Scene
         this.escapeKey.on('down', () => this.openPauseMenu());
     }
 
-    private changeLane (direction: number): void {
+    private changeLane(direction: number): void {
         if (this.isEnding || this.isPaused) return;
         this.lane += direction;
         this.tweens.killTweensOf(this.ship);
         this.tweens.add({ targets: [this.ship, this.shipGlow], x: this.laneX(this.lane), duration: 110, ease: 'Quad.easeOut' });
     }
 
-    private spawnBarriers (): void {
+    private spawnBarriers(): void {
         const gap = Math.max(0.35, 0.8 - this.speedLevel * 0.045 - (this.stage - 1) * 0.035);
         if (this.spawnElapsed < gap) return;
         this.spawnElapsed = 0;
@@ -162,7 +158,7 @@ export class Game extends Scene
         }
     }
 
-    private moveBarriers (delta: number): void {
+    private moveBarriers(delta: number): void {
         this.barriers = this.barriers.filter(barrier => {
             barrier.body.y += barrier.speed * delta;
             if (barrier.body.y > HEIGHT + 50) { barrier.body.destroy(); return false; }
@@ -174,7 +170,7 @@ export class Game extends Scene
         });
     }
 
-    private hitBarrier (barrier: Barrier): void {
+    private hitBarrier(barrier: Barrier): void {
         barrier.body.destroy();
         this.lives--;
         this.shieldUntil = this.time.now + 1300;
@@ -185,7 +181,7 @@ export class Game extends Scene
         if (this.lives <= 0) this.endRun(false);
     }
 
-    private checkAcceleration (): void {
+    private checkAcceleration(): void {
         const every = DIFFICULTIES[this.difficulty].speedEvery;
         const nextLevel = Math.floor(this.elapsed / every);
         if (nextLevel > this.speedLevel) {
@@ -197,7 +193,7 @@ export class Game extends Scene
         if (this.elapsed >= DIFFICULTIES[this.difficulty].goal) this.endRun(true);
     }
 
-    private endRun (cleared: boolean): void {
+    private endRun(cleared: boolean): void {
         if (this.isEnding) return;
         this.isEnding = true;
         this.music?.stop();
@@ -207,15 +203,14 @@ export class Game extends Scene
         this.add.text(512, 412, cleared ? 'PREPARING NEXT RUN...' : 'RETURNING TO HANGAR...', this.hudStyle(18)).setOrigin(0.5).setScrollFactor(0);
         this.time.delayedCall(1900, () => {
             if (cleared && this.stage < 5) {
-                const unlocked = (this.game.registry.get('unlockedStage') as number | undefined) ?? 1;
-                this.game.registry.set('unlockedStage', Math.max(unlocked, this.stage + 1));
-                this.scene.start('MainMenu', { showPhaseSelector: true });
+                this.scene.start('Story', { stage: this.stage, mode: 'outcome' });
             }
+            else if (cleared) this.scene.start('Story', { stage: this.stage, mode: 'outcome' });
             else this.scene.start('GameOver', { cleared, stage: this.stage });
         });
     }
 
-    private openPauseMenu (): void {
+    private openPauseMenu(): void {
         if (this.isEnding || this.isPaused) return;
         this.isPaused = true;
         this.music?.pause();
@@ -238,22 +233,23 @@ export class Game extends Scene
         });
     }
 
-    private playStageMusic (): void {
+    private playStageMusic(): void {
         if (this.game.registry.get('musicOn') === false) return;
         this.music = this.sound.add(`stage-${this.stage}`, { volume: 0.3, loop: true });
         this.music.play();
     }
 
-    private showStageIntro (): void {
-        const message = this.add.text(512, 205, `STAGE ${this.stage} // FACTORY ${String(this.stage).padStart(2, '0')}`, this.hudStyle(23)).setOrigin(0.5).setScrollFactor(0);
+    private showStageIntro(): void {
+        const phase = PHASE_STORIES[this.stage];
+        const message = this.add.text(512, 205, `${phase.title}\n${phase.subtitle}`, { ...this.hudStyle(23), align: 'center', lineSpacing: 8 }).setOrigin(0.5).setScrollFactor(0);
         this.tweens.add({ targets: message, alpha: 0, y: 175, duration: 1500, delay: 500, onComplete: () => message.destroy() });
     }
 
-    private updateShipEffects (): void {
+    private updateShipEffects(): void {
         this.shipGlow.setAlpha(0.12 + Math.sin(this.time.now * 0.02) * 0.08);
     }
 
-    private updateHud (): void {
+    private updateHud(): void {
         const goal = DIFFICULTIES[this.difficulty].goal;
         const remaining = Math.max(0, Math.ceil(goal - this.elapsed));
         this.timerText.setText(this.formatTime(remaining));
@@ -262,18 +258,18 @@ export class Game extends Scene
         this.speedText.setText(`SPEED ${Math.round(this.currentSpeed())}  //  NEXT SURGE ${Math.max(0, Math.ceil(DIFFICULTIES[this.difficulty].speedEvery - (this.elapsed % DIFFICULTIES[this.difficulty].speedEvery)))}S`);
     }
 
-    private flashMessage (text: string, color: number): void {
+    private flashMessage(text: string, color: number): void {
         this.boostText.setText(text).setColor(`#${color.toString(16).padStart(6, '0')}`).setAlpha(1).setScale(0.8);
         this.tweens.add({ targets: this.boostText, alpha: 0, scale: 1.25, duration: 900 });
     }
 
-    private currentSpeed (): number { return this.baseSpeed + (this.stage - 1) * 38 + this.speedLevel * 55; }
+    private currentSpeed(): number { return this.baseSpeed + (this.stage - 1) * 38 + this.speedLevel * 55; }
 
-    private laneX (lane: number): number { return WIDTH / 2 + lane * LANE_WIDTH; }
+    private laneX(lane: number): number { return WIDTH / 2 + lane * LANE_WIDTH; }
 
-    private hudStyle (size: number): Phaser.Types.GameObjects.Text.TextStyle {
+    private hudStyle(size: number): Phaser.Types.GameObjects.Text.TextStyle {
         return { fontFamily: 'monospace', fontSize: size, fontStyle: 'bold', color: '#bafcff', stroke: '#06223c', strokeThickness: 4 };
     }
 
-    private formatTime (seconds: number): string { return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`; }
+    private formatTime(seconds: number): string { return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`; }
 }

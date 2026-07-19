@@ -9,6 +9,10 @@ PhaserX is a high-speed, 8-bit futuristic lane-dodging game built with Phaser 4 
 - Five unlockable phases, each with its own soundtrack.
 - In-game timer, hull display, speed surges, fullscreen play, and a pause menu.
 
+## Story
+
+A company owns every planet and exploits the workers who keep it running. The player steals a ship after uncovering proof of the abuse. Across five phases—The Boss, The Staff, The Product, The Company, and The Factory—the player chooses whether the rebellion protects workers, pursues revenge, or lives with a compromise. Every phase includes a briefing and aftermath decision; the accumulated choices decide the final outcome for the planets.
+
 ## Run locally
 
 Requirements: Node.js and pnpm.
