@@ -29,10 +29,14 @@ export class Preloader extends Scene
 
     preload ()
     {
-        //  Load the assets for the game - Replace with your own assets
         this.load.setPath('assets');
-
         this.load.image('logo', 'logo.png');
+        this.load.audio('boost', 'fx/freesound_community-boom-36120.mp3');
+        this.load.audio('stage-1', 'sounds/Multifaros - The Factory/01 Multifaros - The Boss.mp3');
+        this.load.audio('stage-2', 'sounds/Multifaros - The Factory/02 Multifaros - The Staff.mp3');
+        this.load.audio('stage-3', 'sounds/Multifaros - The Factory/03 Multifaros - The Product.mp3');
+        this.load.audio('stage-4', 'sounds/Multifaros - The Factory/04 Multifaros - The Company.mp3');
+        this.load.audio('stage-5', 'sounds/Multifaros - The Factory/05 Multifaros - The Factory.mp3');
     }
 
     create ()
