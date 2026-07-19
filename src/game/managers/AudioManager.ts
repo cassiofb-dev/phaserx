@@ -17,13 +17,24 @@ export class AudioManager {
         return this.scene.game.registry.get('effectsOn') !== false;
     }
 
+    public getMusicVolume(): number {
+        if (!this.isMusicEnabled()) return 0;
+        return (this.scene.game.registry.get('musicVolume') as number) ?? 0.75;
+    }
+
+    public getEffectsVolume(): number {
+        if (!this.isEffectsEnabled()) return 0;
+        return (this.scene.game.registry.get('effectsVolume') as number) ?? 0.80;
+    }
+
     public playStageMusic(stage: number): void {
         if (!this.isMusicEnabled()) return;
 
         this.stopMusic();
         const key = `stage-${stage}`;
-        if (this.scene.cache.audio.exists(key)) {
-            this.musicTrack = this.scene.sound.add(key, { volume: 0.32, loop: true });
+        const vol = this.getMusicVolume();
+        if (vol > 0 && this.scene.cache.audio.exists(key)) {
+            this.musicTrack = this.scene.sound.add(key, { volume: vol, loop: true });
             this.musicTrack.play();
         }
     }
@@ -32,27 +43,31 @@ export class AudioManager {
         if (!this.isEffectsEnabled()) return;
 
         this.stopFlightAmbient();
-        if (this.scene.cache.audio.exists('flight')) {
-            this.flightLoop = this.scene.sound.add('flight', { volume: 0.16, loop: true });
+        const vol = 0.35 * this.getEffectsVolume();
+        if (vol > 0 && this.scene.cache.audio.exists('flight')) {
+            this.flightLoop = this.scene.sound.add('flight', { volume: vol, loop: true });
             this.flightLoop.play();
         }
     }
 
     public playSwoosh(): void {
-        if (this.isEffectsEnabled() && this.scene.cache.audio.exists('swoosh')) {
-            this.scene.sound.play('swoosh', { volume: 0.22 });
+        const vol = 0.4 * this.getEffectsVolume();
+        if (vol > 0 && this.scene.cache.audio.exists('swoosh')) {
+            this.scene.sound.play('swoosh', { volume: vol });
         }
     }
 
     public playSurge(): void {
-        if (this.isEffectsEnabled() && this.scene.cache.audio.exists('surge')) {
-            this.scene.sound.play('surge', { volume: 0.45 });
+        const vol = 0.8 * this.getEffectsVolume();
+        if (vol > 0 && this.scene.cache.audio.exists('surge')) {
+            this.scene.sound.play('surge', { volume: vol });
         }
     }
 
     public playBoom(): void {
-        if (this.isEffectsEnabled() && this.scene.cache.audio.exists('boom')) {
-            this.scene.sound.play('boom', { volume: 0.5 });
+        const vol = 0.9 * this.getEffectsVolume();
+        if (vol > 0 && this.scene.cache.audio.exists('boom')) {
+            this.scene.sound.play('boom', { volume: vol });
         }
     }
 

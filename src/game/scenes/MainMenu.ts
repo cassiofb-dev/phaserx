@@ -27,7 +27,9 @@ export class MainMenu extends Scene {
     private titleText!: GameObjects.Text;
     private selectedDifficulty: Difficulty = 'medium';
     private musicOn = true;
+    private musicVolume = 1;
     private effectsOn = true;
+    private effectsVolume = 0.80;
     private showPhases = false;
     private difficultyButtons: Record<Difficulty, Button | null> = { easy: null, medium: null, hard: null, hardcore: null };
 
@@ -39,7 +41,9 @@ export class MainMenu extends Scene {
         this.showPhases = data.showPhaseSelector ?? false;
         this.selectedDifficulty = (this.game.registry.get('difficulty') as Difficulty) ?? 'medium';
         this.musicOn = (this.game.registry.get('musicOn') as boolean) ?? true;
+        this.musicVolume = (this.game.registry.get('musicVolume') as number) ?? 1;
         this.effectsOn = (this.game.registry.get('effectsOn') as boolean) ?? true;
+        this.effectsVolume = (this.game.registry.get('effectsVolume') as number) ?? 0.80;
     }
 
     create(): void {
@@ -49,7 +53,7 @@ export class MainMenu extends Scene {
         this.gridBg = new GridBackground(this);
 
         // Animated neon floating Title
-        this.titleText = this.add.text(512, 78, 'PHASERX', {
+        this.titleText = this.add.text(512, 74, 'PHASERX', {
             fontFamily: 'monospace',
             fontSize: 62,
             fontStyle: 'bold',
@@ -70,7 +74,7 @@ export class MainMenu extends Scene {
             ease: 'Sine.easeInOut'
         });
 
-        this.add.text(512, 138, 'DODGE // SURVIVE // ACCELERATE', {
+        this.add.text(512, 134, 'DODGE // SURVIVE // ACCELERATE', {
             fontFamily: 'monospace',
             fontSize: 16,
             fontStyle: 'bold',
@@ -83,13 +87,13 @@ export class MainMenu extends Scene {
         }
 
         // Start / Launch Run Button
-        new Button(this, 512, 230, 'START MISSION', () => {
+        new Button(this, 512, 222, 'START MISSION', () => {
             this.saveRegistryOptions();
             this.scene.restart({ showPhaseSelector: true });
         }, 280, PINK, CYAN, 50).setDepth(10);
 
         // Difficulty Selector header & option buttons
-        this.add.text(512, 312, 'SELECT DIFFICULTY', this.subHeaderStyle()).setOrigin(0.5).setDepth(10);
+        this.add.text(512, 300, 'SELECT DIFFICULTY', this.subHeaderStyle()).setOrigin(0.5).setDepth(10);
         const options = Object.keys(DIFFICULTIES) as Difficulty[];
         options.forEach((diffKey, idx) => {
             const x = 250 + idx * 175;
@@ -97,7 +101,7 @@ export class MainMenu extends Scene {
             const btn = new Button(
                 this,
                 x,
-                356,
+                344,
                 DIFFICULTIES[diffKey].label,
                 () => {
                     this.selectedDifficulty = diffKey;
@@ -117,54 +121,107 @@ export class MainMenu extends Scene {
         const rule = DIFFICULTIES[this.selectedDifficulty];
         this.add.text(
             512,
-            415,
+            400,
             `${rule.lives} LIFE${rule.lives > 1 ? 'S' : ''}  //  SURGE EACH ${rule.speedEvery}S  //  STAGE GOAL: ${this.formatTime(rule.goal)}`,
             { fontFamily: 'monospace', fontSize: 14, fontStyle: 'bold', color: '#ffffff' }
         ).setOrigin(0.5).setDepth(10);
 
-        // Options Row
-        new Button(this, 292, 498, 'PILOT GUIDE', () => this.showGuide(), 250, 0x12365e).setDepth(10);
+        // Audio & Options Grid (Y = 470 & 532)
+        new Button(this, 230, 470, 'PILOT GUIDE', () => this.showGuide(), 200, 0x12365e, CYAN, 44).setDepth(10);
+
+        // Music Controls
         new Button(
             this,
-            732,
-            498,
-            `AUDIO TRACK: ${this.musicOn ? 'ON' : 'OFF'}`,
+            480,
+            470,
+            `MUSIC: ${this.musicOn ? 'ON' : 'OFF'}`,
             () => {
                 this.musicOn = !this.musicOn;
                 this.saveRegistryOptions();
                 this.scene.restart();
             },
-            310,
-            0x12365e
+            210,
+            0x12365e,
+            this.musicOn ? CYAN : 0x4a6585,
+            44
         ).setDepth(10);
 
         new Button(
             this,
-            512,
-            556,
+            740,
+            470,
+            `MUSIC VOL: ${Math.round(this.musicVolume * 100)}%`,
+            () => {
+                this.musicVolume = this.cycleVolume(this.musicVolume);
+                if (this.musicVolume > 0) this.musicOn = true;
+                this.saveRegistryOptions();
+                this.scene.restart();
+            },
+            240,
+            0x12365e,
+            CYAN,
+            44
+        ).setDepth(10);
+
+        // FX Controls
+        new Button(
+            this,
+            480,
+            532,
             `SOUND FX: ${this.effectsOn ? 'ON' : 'OFF'}`,
             () => {
                 this.effectsOn = !this.effectsOn;
                 this.saveRegistryOptions();
                 this.scene.restart();
             },
-            250,
-            0x12365e
+            210,
+            0x12365e,
+            this.effectsOn ? CYAN : 0x4a6585,
+            44
+        ).setDepth(10);
+
+        new Button(
+            this,
+            740,
+            532,
+            `FX VOL: ${Math.round(this.effectsVolume * 100)}%`,
+            () => {
+                this.effectsVolume = this.cycleVolume(this.effectsVolume);
+                if (this.effectsVolume > 0) this.effectsOn = true;
+                this.saveRegistryOptions();
+                this.scene.restart();
+            },
+            240,
+            0x12365e,
+            CYAN,
+            44
         ).setDepth(10);
 
         // Footer info text
-        this.add.text(512, 685, '5 FACTORY STAGES  •  DYNAMIC TRANSMISSIONS', this.subHeaderStyle()).setOrigin(0.5).setDepth(10);
-        this.add.text(512, 714, 'A / D  OR  ← / →  TO CHANGE LANES', { ...this.subHeaderStyle(), color: '#ffffff' }).setOrigin(0.5).setDepth(10);
+        this.add.text(512, 682, '5 FACTORY STAGES  •  DYNAMIC TRANSMISSIONS', this.subHeaderStyle()).setOrigin(0.5).setDepth(10);
+        this.add.text(512, 712, 'A / D  OR  ← / →  TO CHANGE LANES', { ...this.subHeaderStyle(), color: '#ffffff' }).setOrigin(0.5).setDepth(10);
     }
 
     update(_time: number, delta: number): void {
         this.gridBg?.update(delta / 1000, 200);
     }
 
+    private cycleVolume(current: number): number {
+        const steps = [0.20, 0.40, 0.60, 0.80, 1.00];
+        const currentRounded = Math.round(current * 100) / 100;
+        const index = steps.findIndex(v => Math.abs(v - currentRounded) < 0.05);
+        if (index === -1 || index === steps.length - 1) {
+            return steps[0];
+        }
+        return steps[index + 1];
+    }
+
     private saveRegistryOptions(): void {
         this.game.registry.set('difficulty', this.selectedDifficulty);
         this.game.registry.set('musicOn', this.musicOn);
+        this.game.registry.set('musicVolume', this.musicVolume);
         this.game.registry.set('effectsOn', this.effectsOn);
+        this.game.registry.set('effectsVolume', this.effectsVolume);
     }
 
     private createPhaseSelector(): void {
