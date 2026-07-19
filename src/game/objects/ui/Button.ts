@@ -124,6 +124,9 @@ export class Button {
 
     public setScrollFactor(factor: number): void {
         this.container.setScrollFactor(factor);
+        this.background.setScrollFactor(factor);
+        this.border.setScrollFactor(factor);
+        this.labelText.setScrollFactor(factor);
     }
 
     public setDepth(depth: number): void {

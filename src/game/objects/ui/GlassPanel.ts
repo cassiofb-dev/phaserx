@@ -66,6 +66,8 @@ export class GlassPanel {
 
     public setScrollFactor(factor: number): void {
         this.container.setScrollFactor(factor);
+        this.background.setScrollFactor(factor);
+        this.frameGraphics.setScrollFactor(factor);
     }
 
     public setDepth(depth: number): void {

@@ -240,6 +240,10 @@ export class Game extends Scene {
         this.isPaused = true;
         this.audioMgr.pauseAll();
 
+        // Reset camera scroll position to 0 while paused so UI hit targets remain perfectly centered
+        const savedScrollX = this.cameras.main.scrollX;
+        this.cameras.main.scrollX = 0;
+
         const shade = this.add.rectangle(512, 384, WIDTH, HEIGHT, 0x051229, 0.82)
             .setScrollFactor(0)
             .setInteractive()
@@ -269,6 +273,7 @@ export class Game extends Scene {
                 title.destroy();
                 resumeBtn.destroy();
                 hangarBtn.destroy();
+                this.cameras.main.scrollX = savedScrollX;
                 this.isPaused = false;
                 this.audioMgr.resumeAll();
             },
