@@ -218,7 +218,6 @@ export class Story extends Scene {
 
         clickArea.on('pointerover', () => {
             this.tweens.add({ targets: panel.container, scaleX: 1.04, scaleY: 1.04, duration: 100 });
-            if (this.game.registry.get('effectsOn') !== false) this.sound.play('swoosh', { volume: 0.15 });
         });
         clickArea.on('pointerout', () => {
             this.tweens.add({ targets: panel.container, scaleX: 1.0, scaleY: 1.0, duration: 100 });

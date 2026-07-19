@@ -61,10 +61,6 @@ export class Button {
                 duration: 100,
                 ease: 'Quad.easeOut'
             });
-
-            if (this.scene.game.registry.get('effectsOn') !== false) {
-                this.scene.sound.play('swoosh', { volume: 0.15 });
-            }
         });
 
         this.background.on('pointerout', () => {

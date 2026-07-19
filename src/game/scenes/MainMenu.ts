@@ -220,7 +220,6 @@ export class MainMenu extends Scene {
 
                 clickArea.on('pointerover', () => {
                     this.tweens.add({ targets: card.container, scaleX: 1.05, scaleY: 1.05, duration: 120 });
-                    if (this.effectsOn) this.sound.play('swoosh', { volume: 0.15 });
                 });
                 clickArea.on('pointerout', () => {
                     this.tweens.add({ targets: card.container, scaleX: 1.0, scaleY: 1.0, duration: 120 });
