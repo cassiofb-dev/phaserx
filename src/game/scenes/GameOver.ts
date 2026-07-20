@@ -1,4 +1,4 @@
-import { GameObjects, Scene } from 'phaser';
+import { Scene } from 'phaser';
 import { GlassPanel } from '../objects/ui/GlassPanel';
 import { Button } from '../objects/ui/Button';
 
@@ -9,8 +9,6 @@ const PINK = 0xff3da5;
 
 export class GameOver extends Scene
 {
-    private celebrationEmitter?: GameObjects.Particles.ParticleEmitter;
-
     constructor () { super('GameOver'); }
 
     create (data: EndData): void
@@ -41,11 +39,11 @@ export class GameOver extends Scene
             color: '#bafcff'
         }).setOrigin(0.5);
 
-        if (cleared && data.ending) {
+        if (cleared) {
             this.add.text(
                 512,
                 370,
-                `ENDING ACHIEVED: ${data.ending}\n\nTHE DESTINY OF THE OUTER COLONIES WAS DECIDED BY YOUR DIRECTIVES.`,
+                `VICTORY ACHIEVED!\n\nTHE PLAYER HAS DESTROYED THE COMPANY FACTORY, HQ, STOCKS, BOSS, AND ALL COWORKERS OBEYING ORDERS.`,
                 {
                     fontFamily: 'monospace',
                     fontSize: 16,
@@ -55,11 +53,11 @@ export class GameOver extends Scene
                     wordWrap: { width: 780 }
                 }
             ).setOrigin(0.5);
-        } else if (!cleared) {
+        } else {
             this.add.text(
                 512,
                 370,
-                `HULL INTEGRITY COMPROMISED.\n\nTHE CORPORATE BELT MAINTAINS CONTROL UNTIL THE NEXT PILOT BREACH.`,
+                `HULL INTEGRITY COMPROMISED.\n\nPLAYER SHIP DESTROYED IN ACTION. MISSION FAILED.`,
                 {
                     fontFamily: 'monospace',
                     fontSize: 16,
@@ -91,7 +89,7 @@ export class GameOver extends Scene
         if (!this.textures.exists('spark')) return;
 
         if (cleared) {
-            this.celebrationEmitter = this.add.particles(512, 700, 'spark', {
+            this.add.particles(512, 700, 'spark', {
                 speedY: { min: -400, max: -150 },
                 speedX: { min: -250, max: 250 },
                 scale: { start: 0.8, end: 0 },
@@ -101,7 +99,7 @@ export class GameOver extends Scene
                 frequency: 60
             });
         } else {
-            this.celebrationEmitter = this.add.particles(512, 100, 'spark', {
+            this.add.particles(512, 100, 'spark', {
                 speedY: { min: 100, max: 300 },
                 speedX: { min: -150, max: 150 },
                 scale: { start: 0.6, end: 0 },

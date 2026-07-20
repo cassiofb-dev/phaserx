@@ -290,8 +290,7 @@ export class MainMenu extends Scene {
     }
 
     private startPhase(stage: number): void {
-        if (stage === 1) this.game.registry.set('storyChoices', []);
-        this.scene.start('Story', { stage, mode: 'briefing' });
+        this.scene.start('Game', { stage });
     }
 
     private showGuide(): void {

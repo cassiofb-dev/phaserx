@@ -1,12 +1,13 @@
-import { Input, Math as PhaserMath, Scene } from 'phaser';
+import { Input, Scene } from 'phaser';
 import { DIFFICULTIES, Difficulty } from './MainMenu';
-import { PHASE_STORIES } from './Story';
+import { PHASE_CONFIGS } from '../config/PhaseConfig';
 import { GridBackground } from '../objects/GridBackground';
 import { PlayerShip } from '../objects/PlayerShip';
 import { BarrierManager } from '../objects/BarrierManager';
 import { HUD } from '../objects/ui/HUD';
 import { EffectsManager } from '../managers/EffectsManager';
 import { AudioManager } from '../managers/AudioManager';
+import { TransmissionManager } from '../managers/TransmissionManager';
 import { GlassPanel } from '../objects/ui/GlassPanel';
 import { Button } from '../objects/ui/Button';
 
@@ -36,6 +37,7 @@ export class Game extends Scene {
     private hud!: HUD;
     private fxMgr!: EffectsManager;
     private audioMgr!: AudioManager;
+    private transmissionMgr!: TransmissionManager;
 
     private leftKey!: Input.Keyboard.Key;
     private rightKey!: Input.Keyboard.Key;
@@ -77,6 +79,7 @@ export class Game extends Scene {
         this.playerShip = new PlayerShip(this, this.laneX(this.lane), 650);
         this.barrierMgr = new BarrierManager(this);
         this.hud = new HUD(this, () => this.openPauseMenu());
+        this.transmissionMgr = new TransmissionManager(this, this.audioMgr, this.stage);
 
         // Keyboard Controls
         this.createInput();
@@ -109,6 +112,9 @@ export class Game extends Scene {
             currentSpeed,
             surgeCountdown
         );
+
+        // Update Story Ship Transmissions (rare random incoming comms)
+        this.transmissionMgr.update(deltaSeconds);
 
         // Update Background Grid & Planets Animation
         this.gridBg.update(deltaSeconds, currentSpeed);
@@ -201,16 +207,17 @@ export class Game extends Scene {
         if (this.isEnding) return;
         this.isEnding = true;
 
+        this.transmissionMgr?.destroy();
         this.audioMgr.stopAll();
 
         const message = cleared
-            ? (this.stage >= 5 ? 'ALL FACTORIES CLEARED!' : `STAGE 0${this.stage} CLEARED!`)
+            ? (this.stage >= 5 ? 'ALL STAGES CLEARED!' : `STAGE 0${this.stage} CLEARED!`)
             : 'SHIP DESTROYED';
 
         const panel = new GlassPanel(this, 512, 384, 780, 215, cleared ? CYAN : PINK, 0x0e2b4f, 0.98);
         panel.setScrollFactor(0);
 
-        const text1 = this.add.text(512, 345, message, {
+        this.add.text(512, 345, message, {
             fontFamily: 'monospace',
             fontSize: 34,
             fontStyle: 'bold',
@@ -219,7 +226,7 @@ export class Game extends Scene {
             strokeThickness: 5
         }).setOrigin(0.5).setScrollFactor(0);
 
-        const text2 = this.add.text(512, 410, cleared ? 'PREPARING TRANSMISSION OUTCOME...' : 'RETURNING TO HANGAR...', {
+        this.add.text(512, 410, cleared ? (this.stage < 5 ? 'PROCEEDING TO NEXT PHASE...' : 'MISSION ACCOMPLISHED!') : 'RETURNING TO HANGAR...', {
             fontFamily: 'monospace',
             fontSize: 18,
             color: '#bafcff'
@@ -227,7 +234,14 @@ export class Game extends Scene {
 
         this.time.delayedCall(1900, () => {
             if (cleared) {
-                this.scene.start('Story', { stage: this.stage, mode: 'outcome' });
+                const unlocked = (this.game.registry.get('unlockedStage') as number | undefined) ?? 1;
+                this.game.registry.set('unlockedStage', Math.max(unlocked, Math.min(5, this.stage + 1)));
+
+                if (this.stage < 5) {
+                    this.scene.start('Game', { stage: this.stage + 1 });
+                } else {
+                    this.scene.start('GameOver', { cleared: true, stage: 5 });
+                }
             } else {
                 this.scene.start('GameOver', { cleared: false, stage: this.stage });
             }
@@ -291,6 +305,7 @@ export class Game extends Scene {
             430,
             'RETURN TO HANGAR',
             () => {
+                this.transmissionMgr?.destroy();
                 this.audioMgr.stopAll();
                 this.scene.start('MainMenu');
             },
@@ -304,16 +319,17 @@ export class Game extends Scene {
     }
 
     private showStageIntro(): void {
-        const phase = PHASE_STORIES[this.stage];
-        const text = this.add.text(512, 205, `${phase.title}\n${phase.subtitle}`, {
+        const phase = PHASE_CONFIGS[this.stage];
+        if (!phase) return;
+
+        const text = this.add.text(512, 205, phase.title, {
             fontFamily: 'monospace',
-            fontSize: 22,
+            fontSize: 26,
             fontStyle: 'bold',
             color: '#ffffff',
             stroke: '#082a4d',
-            strokeThickness: 4,
-            align: 'center',
-            lineSpacing: 8
+            strokeThickness: 5,
+            align: 'center'
         }).setOrigin(0.5).setScrollFactor(0).setDepth(25);
 
         this.tweens.add({
@@ -321,7 +337,7 @@ export class Game extends Scene {
             alpha: 0,
             y: 175,
             duration: 1500,
-            delay: 600,
+            delay: 700,
             onComplete: () => text.destroy()
         });
     }
@@ -334,3 +350,4 @@ export class Game extends Scene {
         return WIDTH / 2 + lane * LANE_WIDTH;
     }
 }
+

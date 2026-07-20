@@ -93,7 +93,7 @@ export class BarrierManager {
         playerLane: number,
         playerY: number,
         isShielded: boolean,
-        effectsOn: boolean,
+        _effectsOn: boolean,
         onNearMiss: () => void,
         onCollision: () => void
     ): void {

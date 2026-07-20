@@ -17,7 +17,6 @@ export class GridBackground {
     private activePlanets: ActivePlanet[] = [];
     private planetSpawnTimer = 0;
     private gridOffsetY = 0;
-    private currentSpeed = 300;
     private planetKeys = ['planet_cyan', 'planet_purple', 'planet_gold', 'planet_moon'];
 
     constructor(scene: Scene) {
@@ -122,7 +121,6 @@ export class GridBackground {
     }
 
     public update(deltaSeconds: number, speed: number): void {
-        this.currentSpeed = speed;
         this.gridOffsetY = (this.gridOffsetY + speed * deltaSeconds * 0.75) % 46;
 
         // Move Planets
