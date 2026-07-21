@@ -22,10 +22,10 @@ export class TransmissionManager {
     }
 
     private resetTimer(): void {
-        // Initial transmission between 8-14s; subsequent transmissions between 28-48s (rare)
+        // First transmission between 22-38s; subsequent transmissions between 55-95s (rare)
         const delay = this.shownIndices.size === 0
-            ? PhaserMath.Between(8, 14)
-            : PhaserMath.Between(28, 48);
+            ? PhaserMath.Between(22, 38)
+            : PhaserMath.Between(55, 95);
         this.nextTriggerTime = this.timer + delay;
     }
 
