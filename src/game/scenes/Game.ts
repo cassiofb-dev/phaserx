@@ -1,6 +1,6 @@
 import { Input, Scene } from 'phaser';
 import { DIFFICULTIES, Difficulty } from './MainMenu';
-import { PHASE_CONFIGS } from '../config/PhaseConfig';
+import { STAGE_THEMES } from '../config/StageThemeConfig';
 import { GridBackground } from '../objects/GridBackground';
 import { PlayerShip } from '../objects/PlayerShip';
 import { BarrierManager } from '../objects/BarrierManager';
@@ -44,9 +44,11 @@ export class Game extends Scene {
     private aKey!: Input.Keyboard.Key;
     private dKey!: Input.Keyboard.Key;
     private escapeKey!: Input.Keyboard.Key;
+    private enterKey!: Input.Keyboard.Key;
 
     private isEnding = false;
     private isPaused = false;
+    private pauseOverlayElements: { destroy: () => void }[] = [];
 
     constructor() {
         super('Game');
@@ -66,22 +68,29 @@ export class Game extends Scene {
         this.lane = 0;
         this.isEnding = false;
         this.isPaused = false;
+        this.pauseOverlayElements = [];
     }
 
     create(): void {
-        this.cameras.main.setBackgroundColor(0x0a1c3f);
+        const theme = STAGE_THEMES[this.stage] ?? STAGE_THEMES[1];
+
+        // Smooth Camera Scene Fade-In
+        this.cameras.main.fadeIn(400, 0, 0, 0);
+        this.cameras.main.setBackgroundColor(theme.bgGradTop);
         this.cameras.main.scrollX = 0;
 
-        // Managers & Components
+        // Managers & Components with Stage Theme
         this.audioMgr = new AudioManager(this);
         this.fxMgr = new EffectsManager(this);
-        this.gridBg = new GridBackground(this);
+        this.gridBg = new GridBackground(this, this.stage);
         this.playerShip = new PlayerShip(this, this.laneX(this.lane), 650);
         this.barrierMgr = new BarrierManager(this);
-        this.hud = new HUD(this, () => this.openPauseMenu());
+        this.hud = new HUD(this, () => this.togglePauseMenu());
+        this.hud.setStageAccent(theme.hudAccent);
+
         this.transmissionMgr = new TransmissionManager(this, this.audioMgr, this.stage);
 
-        // Keyboard Controls
+        // Keyboard Controls (A/D, Arrows, ESC, ENTER)
         this.createInput();
 
         // Audio & Intro
@@ -113,10 +122,10 @@ export class Game extends Scene {
             surgeCountdown
         );
 
-        // Update Story Ship Transmissions (rare random incoming comms)
+        // Update Transmissions
         this.transmissionMgr.update(deltaSeconds);
 
-        // Update Background Grid & Planets Animation
+        // Update Stage Grid & Planets
         this.gridBg.update(deltaSeconds, currentSpeed);
 
         // Check Speed Acceleration
@@ -129,7 +138,7 @@ export class Game extends Scene {
             this.barrierMgr.spawnBarrier(this.lane, this.speedLevel, this.stage, currentSpeed);
         }
 
-        // Update Barriers & Collision
+        // Update Barriers & Collision Detection
         const isShielded = this.time.now < this.shieldUntil;
         this.barrierMgr.update(
             deltaSeconds,
@@ -137,8 +146,12 @@ export class Game extends Scene {
             this.playerShip.y,
             isShielded,
             this.audioMgr.isEffectsEnabled(),
-            () => this.audioMgr.playSwoosh(),
-            () => this.handleHit()
+            () => {
+                this.audioMgr.playSwoosh();
+                this.fxMgr.triggerNearMiss(this.playerShip.x, this.playerShip.y - 40);
+            },
+            () => this.handleHit(),
+            this.stage
         );
 
         // Update Player Ship smooth movements
@@ -155,12 +168,16 @@ export class Game extends Scene {
         this.aKey = this.input.keyboard.addKey(Input.Keyboard.KeyCodes.A);
         this.dKey = this.input.keyboard.addKey(Input.Keyboard.KeyCodes.D);
         this.escapeKey = this.input.keyboard.addKey(Input.Keyboard.KeyCodes.ESC);
+        this.enterKey = this.input.keyboard.addKey(Input.Keyboard.KeyCodes.ENTER);
 
         this.leftKey.on('down', () => this.changeLane(-1));
         this.aKey.on('down', () => this.changeLane(-1));
         this.rightKey.on('down', () => this.changeLane(1));
         this.dKey.on('down', () => this.changeLane(1));
-        this.escapeKey.on('down', () => this.openPauseMenu());
+
+        // Both ESC and ENTER open / close the in-game menu!
+        this.escapeKey.on('down', () => this.togglePauseMenu());
+        this.enterKey.on('down', () => this.togglePauseMenu());
     }
 
     private changeLane(direction: number): void {
@@ -176,6 +193,7 @@ export class Game extends Scene {
 
         this.fxMgr.triggerHitGlitch();
         this.audioMgr.playBoom();
+        this.playerShip.triggerHitEffect();
         this.playerShip.setInvulnerable(true, 1400);
         this.hud.flashAlert('HULL HIT!', '#ff3da5');
 
@@ -191,9 +209,9 @@ export class Game extends Scene {
         if (nextLevel > this.speedLevel) {
             this.speedLevel = nextLevel;
             this.audioMgr.playSurge();
-            this.fxMgr.triggerSpeedSurge();
+            this.fxMgr.triggerSpeedSurge(this.stage);
             this.gridBg.setWarpEffect(true);
-            this.hud.flashAlert('VELOCITY SURGE!', '#31f5ff');
+            this.hud.flashAlert('VELOCITY SURGE!', STAGE_THEMES[this.stage]?.hudAccent ?? '#31f5ff');
 
             this.time.delayedCall(1200, () => this.gridBg.setWarpEffect(false));
         }
@@ -216,6 +234,7 @@ export class Game extends Scene {
 
         const panel = new GlassPanel(this, 512, 384, 780, 215, cleared ? CYAN : PINK, 0x0e2b4f, 0.98);
         panel.setScrollFactor(0);
+        panel.animateIn(200);
 
         this.add.text(512, 345, message, {
             fontFamily: 'monospace',
@@ -238,14 +257,33 @@ export class Game extends Scene {
                 this.game.registry.set('unlockedStage', Math.max(unlocked, Math.min(5, this.stage + 1)));
 
                 if (this.stage < 5) {
-                    this.scene.start('Game', { stage: this.stage + 1 });
+                    this.cameras.main.fadeOut(350);
+                    this.time.delayedCall(360, () => {
+                        this.scene.start('Game', { stage: this.stage + 1 });
+                    });
                 } else {
-                    this.scene.start('GameOver', { cleared: true, stage: 5 });
+                    this.cameras.main.fadeOut(350);
+                    this.time.delayedCall(360, () => {
+                        this.scene.start('GameOver', { cleared: true, stage: 5 });
+                    });
                 }
             } else {
-                this.scene.start('GameOver', { cleared: false, stage: this.stage });
+                this.cameras.main.fadeOut(350);
+                this.time.delayedCall(360, () => {
+                    this.scene.start('GameOver', { cleared: false, stage: this.stage });
+                });
             }
         });
+    }
+
+    private togglePauseMenu(): void {
+        if (this.isEnding) return;
+
+        if (this.isPaused) {
+            this.resumeGame();
+        } else {
+            this.openPauseMenu();
+        }
     }
 
     private openPauseMenu(): void {
@@ -254,20 +292,22 @@ export class Game extends Scene {
         this.isPaused = true;
         this.audioMgr.pauseAll();
 
-        // Reset camera scroll position to 0 while paused so UI hit targets remain perfectly centered
         const savedScrollX = this.cameras.main.scrollX;
         this.cameras.main.scrollX = 0;
 
-        const shade = this.add.rectangle(512, 384, WIDTH, HEIGHT, 0x051229, 0.82)
+        const theme = STAGE_THEMES[this.stage] ?? STAGE_THEMES[1];
+
+        const shade = this.add.rectangle(512, 384, WIDTH, HEIGHT, 0x051229, 0.84)
             .setScrollFactor(0)
             .setInteractive()
             .setDepth(30);
 
-        const panel = new GlassPanel(this, 512, 384, 520, 315, CYAN, 0x0e2b4f, 0.98);
+        const panel = new GlassPanel(this, 512, 384, 520, 325, theme.horizonPrimary, 0x0e2b4f, 0.98);
         panel.setScrollFactor(0);
         panel.setDepth(31);
+        panel.animateIn(200);
 
-        const title = this.add.text(512, 290, 'SYSTEM PAUSED', {
+        const title = this.add.text(512, 280, 'SYSTEM PAUSED', {
             fontFamily: 'monospace',
             fontSize: 32,
             fontStyle: 'bold',
@@ -276,69 +316,107 @@ export class Game extends Scene {
             strokeThickness: 4
         }).setOrigin(0.5).setScrollFactor(0).setDepth(32);
 
+        const subTitle = this.add.text(512, 315, '[ PRESS ENTER OR ESC TO RESUME ]', {
+            fontFamily: 'monospace',
+            fontSize: 13,
+            color: theme.hudAccent
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(32);
+
         const resumeBtn = new Button(
             this,
             512,
-            360,
+            368,
             'RESUME MISSION',
-            () => {
-                shade.destroy();
-                panel.destroy();
-                title.destroy();
-                resumeBtn.destroy();
-                hangarBtn.destroy();
-                this.cameras.main.scrollX = savedScrollX;
-                this.isPaused = false;
-                this.audioMgr.resumeAll();
-            },
+            () => this.resumeGame(savedScrollX),
             270,
             0x12365e,
-            CYAN,
-            48
+            theme.horizonPrimary,
+            46
         );
         resumeBtn.setScrollFactor(0);
         resumeBtn.setDepth(32);
+        resumeBtn.animateIn(50, 200);
 
         const hangarBtn = new Button(
             this,
             512,
-            430,
+            436,
             'RETURN TO HANGAR',
             () => {
                 this.transmissionMgr?.destroy();
                 this.audioMgr.stopAll();
-                this.scene.start('MainMenu');
+                this.cameras.main.fadeOut(300);
+                this.time.delayedCall(310, () => {
+                    this.scene.start('MainMenu');
+                });
             },
             270,
             0x611b49,
             PINK,
-            48
+            46
         );
         hangarBtn.setScrollFactor(0);
         hangarBtn.setDepth(32);
+        hangarBtn.animateIn(100, 200);
+
+        this.pauseOverlayElements = [
+            shade,
+            panel.container,
+            title,
+            subTitle,
+            resumeBtn.container,
+            hangarBtn.container
+        ];
+    }
+
+    private resumeGame(savedScrollX?: number): void {
+        if (!this.isPaused) return;
+
+        this.pauseOverlayElements.forEach(el => el.destroy());
+        this.pauseOverlayElements = [];
+
+        if (savedScrollX !== undefined) {
+            this.cameras.main.scrollX = savedScrollX;
+        }
+
+        this.isPaused = false;
+        this.audioMgr.resumeAll();
     }
 
     private showStageIntro(): void {
-        const phase = PHASE_CONFIGS[this.stage];
-        if (!phase) return;
+        const theme = STAGE_THEMES[this.stage];
+        if (!theme) return;
 
-        const text = this.add.text(512, 205, phase.title, {
+        const titleText = this.add.text(512, 195, theme.title, {
             fontFamily: 'monospace',
-            fontSize: 26,
+            fontSize: 30,
             fontStyle: 'bold',
             color: '#ffffff',
             stroke: '#082a4d',
-            strokeThickness: 5,
+            strokeThickness: 6,
             align: 'center'
         }).setOrigin(0.5).setScrollFactor(0).setDepth(25);
 
+        const subText = this.add.text(512, 235, theme.subtitle.toUpperCase(), {
+            fontFamily: 'monospace',
+            fontSize: 16,
+            fontStyle: 'bold',
+            color: theme.hudAccent,
+            stroke: '#041224',
+            strokeThickness: 3
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(25);
+
         this.tweens.add({
-            targets: text,
+            targets: [titleText, subText],
             alpha: 0,
-            y: 175,
-            duration: 1500,
-            delay: 700,
-            onComplete: () => text.destroy()
+            y: '-=30',
+            duration: 1600,
+            delay: 900,
+            ease: 'Quad.easeOut',
+            onComplete: () => {
+                titleText.destroy();
+                subText.destroy();
+            }
         });
     }
 
@@ -350,4 +428,3 @@ export class Game extends Scene {
         return WIDTH / 2 + lane * LANE_WIDTH;
     }
 }
-

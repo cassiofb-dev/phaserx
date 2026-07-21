@@ -64,14 +64,30 @@ export class GlassPanel {
         g.lineBetween(w2, h2 - len, w2, h2);
     }
 
-    public setScrollFactor(factor: number): void {
+    public animateIn(duration = 250): this {
+        this.container.setScale(0.8);
+        this.container.setAlpha(0);
+        this.scene.tweens.add({
+            targets: this.container,
+            scaleX: 1.0,
+            scaleY: 1.0,
+            alpha: 1.0,
+            duration,
+            ease: 'Back.easeOut'
+        });
+        return this;
+    }
+
+    public setScrollFactor(factor: number): this {
         this.container.setScrollFactor(factor);
         this.background.setScrollFactor(factor);
         this.frameGraphics.setScrollFactor(factor);
+        return this;
     }
 
-    public setDepth(depth: number): void {
+    public setDepth(depth: number): this {
         this.container.setDepth(depth);
+        return this;
     }
 
     public destroy(): void {

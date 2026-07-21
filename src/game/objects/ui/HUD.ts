@@ -11,12 +11,13 @@ export class HUD {
     private speedText: GameObjects.Text;
     private alertText: GameObjects.Text;
     private pauseButton: Button;
+    private accentColor = '#31f5ff';
 
     constructor(scene: Scene, onPause: () => void) {
         this.scene = scene;
 
         // Container pinned to screen
-        this.container = this.scene.add.container(0, 0).setScrollFactor(0).setDepth(20);
+        this.container = this.scene.add.container(0, -60).setScrollFactor(0).setDepth(20);
 
         // Top status glass bar
         this.topBar = this.scene.add.rectangle(512, 40, 990, 64, 0x07162b, 0.95)
@@ -53,7 +54,7 @@ export class HUD {
             .setOrigin(0.5);
 
         // Flash Alert text banner (e.g. VELOCITY SURGE! / HULL HIT!)
-        this.alertText = this.scene.add.text(512, 135, '', this.hudTextStyle(20, '#ffffff'))
+        this.alertText = this.scene.add.text(512, 135, '', this.hudTextStyle(22, '#ffffff'))
             .setOrigin(0.5)
             .setAlpha(0);
 
@@ -64,6 +65,22 @@ export class HUD {
             this.speedText,
             this.alertText
         ]);
+
+        // Smooth Entrance Drop-down Animation
+        this.scene.tweens.add({
+            targets: this.container,
+            y: 0,
+            duration: 400,
+            ease: 'Back.easeOut'
+        });
+    }
+
+    public setStageAccent(colorHex: string): void {
+        this.accentColor = colorHex;
+        const colorNum = parseInt(colorHex.replace('#', '0x'), 16);
+        this.topBar.setStrokeStyle(2, colorNum);
+        this.pauseButton.setStroke(colorNum);
+        this.stageText.setColor(colorHex);
     }
 
     public update(
@@ -82,7 +99,7 @@ export class HUD {
         if (remainingSeconds <= 10 && remainingSeconds > 0) {
             this.timerText.setColor('#ff3da5');
         } else {
-            this.timerText.setColor('#31f5ff');
+            this.timerText.setColor(this.accentColor);
         }
 
         // Hull hearts formatting
@@ -98,15 +115,23 @@ export class HUD {
         this.alertText.setText(text)
             .setColor(colorHex)
             .setAlpha(1)
-            .setScale(0.8);
+            .setScale(0.5);
 
         this.scene.tweens.killTweensOf(this.alertText);
         this.scene.tweens.add({
             targets: this.alertText,
-            alpha: 0,
-            scale: 1.3,
-            duration: 950,
-            ease: 'Quad.easeOut'
+            scale: 1.25,
+            duration: 180,
+            ease: 'Back.easeOut',
+            onComplete: () => {
+                this.scene.tweens.add({
+                    targets: this.alertText,
+                    alpha: 0,
+                    scale: 1.5,
+                    duration: 750,
+                    ease: 'Quad.easeOut'
+                });
+            }
         });
     }
 

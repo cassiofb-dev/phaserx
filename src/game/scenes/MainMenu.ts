@@ -1,4 +1,4 @@
-import { GameObjects, Scene } from 'phaser';
+import { GameObjects, Input, Scene } from 'phaser';
 import { GridBackground } from '../objects/GridBackground';
 import { Button } from '../objects/ui/Button';
 import { GlassPanel } from '../objects/ui/GlassPanel';
@@ -47,10 +47,25 @@ export class MainMenu extends Scene {
     }
 
     create(): void {
+        this.cameras.main.fadeIn(400, 0, 0, 0);
         this.cameras.main.setBackgroundColor(0x0a1c3f);
 
         // Synthwave 3D perspective grid background with planets and stars
-        this.gridBg = new GridBackground(this);
+        this.gridBg = new GridBackground(this, 1);
+
+        // Keyboard ENTER key listener to quickly start mission
+        if (this.input.keyboard) {
+            const enterKey = this.input.keyboard.addKey(Input.Keyboard.KeyCodes.ENTER);
+            enterKey.once('down', () => {
+                if (!this.showPhases) {
+                    this.saveRegistryOptions();
+                    this.scene.restart({ showPhaseSelector: true });
+                } else {
+                    const unlocked = (this.game.registry.get('unlockedStage') as number | undefined) ?? 1;
+                    this.startPhase(unlocked);
+                }
+            });
+        }
 
         // Animated neon floating Title
         this.titleText = this.add.text(512, 74, 'PHASERX', {
@@ -87,10 +102,12 @@ export class MainMenu extends Scene {
         }
 
         // Start / Launch Run Button
-        new Button(this, 512, 222, 'START MISSION', () => {
+        const startBtn = new Button(this, 512, 222, 'START MISSION [ENTER]', () => {
             this.saveRegistryOptions();
             this.scene.restart({ showPhaseSelector: true });
-        }, 280, PINK, CYAN, 50).setDepth(10);
+        }, 310, PINK, CYAN, 50);
+        startBtn.setDepth(10);
+        startBtn.animateIn(100);
 
         // Difficulty Selector header & option buttons
         this.add.text(512, 300, 'SELECT DIFFICULTY', this.subHeaderStyle()).setOrigin(0.5).setDepth(10);
@@ -114,6 +131,7 @@ export class MainMenu extends Scene {
                 38
             );
             btn.setDepth(10);
+            btn.animateIn(150 + idx * 40);
             this.difficultyButtons[diffKey] = btn;
         });
 
@@ -127,7 +145,7 @@ export class MainMenu extends Scene {
         ).setOrigin(0.5).setDepth(10);
 
         // Audio & Options Grid (Y = 470 & 532)
-        new Button(this, 230, 470, 'PILOT GUIDE', () => this.showGuide(), 200, 0x12365e, CYAN, 44).setDepth(10);
+        new Button(this, 230, 470, 'PILOT GUIDE', () => this.showGuide(), 200, 0x12365e, CYAN, 44).setDepth(10).animateIn(250);
 
         // Music Controls
         new Button(
@@ -144,7 +162,7 @@ export class MainMenu extends Scene {
             0x12365e,
             this.musicOn ? CYAN : 0x4a6585,
             44
-        ).setDepth(10);
+        ).setDepth(10).animateIn(280);
 
         new Button(
             this,
@@ -161,7 +179,7 @@ export class MainMenu extends Scene {
             0x12365e,
             CYAN,
             44
-        ).setDepth(10);
+        ).setDepth(10).animateIn(310);
 
         // FX Controls
         new Button(
@@ -178,7 +196,7 @@ export class MainMenu extends Scene {
             0x12365e,
             this.effectsOn ? CYAN : 0x4a6585,
             44
-        ).setDepth(10);
+        ).setDepth(10).animateIn(340);
 
         new Button(
             this,
@@ -195,11 +213,11 @@ export class MainMenu extends Scene {
             0x12365e,
             CYAN,
             44
-        ).setDepth(10);
+        ).setDepth(10).animateIn(370);
 
         // Footer info text
         this.add.text(512, 682, '5 FACTORY STAGES  •  DYNAMIC TRANSMISSIONS', this.subHeaderStyle()).setOrigin(0.5).setDepth(10);
-        this.add.text(512, 712, 'A / D  OR  ← / →  TO CHANGE LANES', { ...this.subHeaderStyle(), color: '#ffffff' }).setOrigin(0.5).setDepth(10);
+        this.add.text(512, 712, 'A / D  OR  ← / →  TO CHANGE LANES  //  ENTER FOR MENU', { ...this.subHeaderStyle(), color: '#ffffff' }).setOrigin(0.5).setDepth(10);
     }
 
     update(_time: number, delta: number): void {
@@ -234,7 +252,7 @@ export class MainMenu extends Scene {
             color: '#ffffff'
         }).setOrigin(0.5).setDepth(10);
 
-        this.add.text(512, 230, `UNLOCKED STAGES: ${unlockedStage} / 5`, this.subHeaderStyle()).setOrigin(0.5).setDepth(10);
+        this.add.text(512, 230, `UNLOCKED STAGES: ${unlockedStage} / 5  [PRESS ENTER TO LAUNCH LATEST]`, this.subHeaderStyle()).setOrigin(0.5).setDepth(10);
 
         for (let stage = 1; stage <= 5; stage++) {
             const x = 152 + (stage - 1) * 180;
@@ -244,6 +262,7 @@ export class MainMenu extends Scene {
 
             const card = new GlassPanel(this, x, 375, 154, 210, strokeColor, isAvailable ? 0x0f2d54 : 0x0a1a33, 0.95);
             card.setDepth(10);
+            card.animateIn(stage * 60);
 
             const status = stage < unlockedStage ? 'CLEARED' : (isAvailable ? 'READY' : 'LOCKED');
             const statusColor = isAvailable ? '#ffffff' : '#6b8aa8';
@@ -276,7 +295,7 @@ export class MainMenu extends Scene {
                     .setDepth(12);
 
                 clickArea.on('pointerover', () => {
-                    this.tweens.add({ targets: card.container, scaleX: 1.05, scaleY: 1.05, duration: 120 });
+                    this.tweens.add({ targets: card.container, scaleX: 1.06, scaleY: 1.06, duration: 120 });
                 });
                 clickArea.on('pointerout', () => {
                     this.tweens.add({ targets: card.container, scaleX: 1.0, scaleY: 1.0, duration: 120 });
@@ -285,18 +304,25 @@ export class MainMenu extends Scene {
             }
         }
 
-        new Button(this, 512, 615, 'BACK', () => this.scene.restart({ showPhaseSelector: false }), 190, 0x12365e).setDepth(10);
+        const backBtn = new Button(this, 512, 615, 'BACK', () => this.scene.restart({ showPhaseSelector: false }), 190, 0x12365e);
+        backBtn.setDepth(10);
+        backBtn.animateIn(350);
+
         this.add.text(512, 685, 'CLEAR EACH PHASE TO UNLOCK DEEPER FACTORY TRANSMISSIONS', this.subHeaderStyle()).setOrigin(0.5).setDepth(10);
     }
 
     private startPhase(stage: number): void {
-        this.scene.start('Game', { stage });
+        this.cameras.main.fadeOut(350);
+        this.time.delayedCall(360, () => {
+            this.scene.start('Game', { stage });
+        });
     }
 
     private showGuide(): void {
         const shade = this.add.rectangle(512, 384, 1024, 768, 0x051229, 0.82).setInteractive().setDepth(20);
         const panel = new GlassPanel(this, 512, 384, 720, 410, CYAN, 0x0d284a, 0.98);
         panel.setDepth(21);
+        panel.animateIn(150);
 
         const title = this.add.text(512, 220, 'PILOT FLIGHT DIRECTIVE', {
             fontFamily: 'monospace', fontSize: 24, fontStyle: 'bold', color: '#31f5ff'
@@ -305,7 +331,7 @@ export class MainMenu extends Scene {
         const copy = this.add.text(
             512,
             370,
-            'CHANGE LANES with A / D  or  ← / →\nDODGE every hazard barrier streaming from above.\n\nA hit damages hull integrity and activates temporary shield.\nSurvive the timer to clear each corporate factory phase.\nVelocity surges trigger engine boost and UI shockwaves.\n\n[ CLICK ANYWHERE TO CLOSE ]',
+            'CHANGE LANES with A / D  or  ← / →\nDODGE every hazard barrier streaming from above.\nOPEN / CLOSE MENU with ENTER or ESC.\n\nA hit damages hull integrity and activates temporary shield.\nSurvive the timer to clear each corporate factory phase.\nVelocity surges trigger engine boost and UI shockwaves.\n\n[ CLICK ANYWHERE TO CLOSE ]',
             { fontFamily: 'monospace', fontSize: 17, color: '#ffffff', align: 'center', lineSpacing: 8 }
         ).setOrigin(0.5).setDepth(22);
 

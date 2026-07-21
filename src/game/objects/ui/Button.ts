@@ -56,8 +56,8 @@ export class Button {
             this.drawBorder(0xffffff, 3);
             this.scene.tweens.add({
                 targets: this.container,
-                scaleX: 1.04,
-                scaleY: 1.04,
+                scaleX: 1.05,
+                scaleY: 1.05,
                 duration: 100,
                 ease: 'Quad.easeOut'
             });
@@ -79,8 +79,8 @@ export class Button {
         this.background.on('pointerdown', () => {
             this.scene.tweens.add({
                 targets: this.container,
-                scaleX: 0.96,
-                scaleY: 0.96,
+                scaleX: 0.94,
+                scaleY: 0.94,
                 duration: 60,
                 yoyo: true,
                 onComplete: onClick
@@ -104,33 +104,53 @@ export class Button {
         this.border.lineBetween(w2, h2 - 8, w2, h2);
     }
 
-    public setText(newText: string): void {
-        this.labelText.setText(newText);
+    public animateIn(delay = 0, duration = 200): this {
+        this.container.setScale(0.8);
+        this.container.setAlpha(0);
+        this.scene.tweens.add({
+            targets: this.container,
+            scaleX: 1.0,
+            scaleY: 1.0,
+            alpha: 1.0,
+            delay,
+            duration,
+            ease: 'Back.easeOut'
+        });
+        return this;
     }
 
-    public setStroke(color: number): void {
+    public setText(newText: string): this {
+        this.labelText.setText(newText);
+        return this;
+    }
+
+    public setStroke(color: number): this {
         this.strokeColor = color;
         if (!this.isHovered) {
             this.drawBorder(color, 2);
         }
+        return this;
     }
 
-    public setFill(color: number): void {
+    public setFill(color: number): this {
         this.normalColor = color;
         if (!this.isHovered) {
             this.background.setFillStyle(color, 0.9);
         }
+        return this;
     }
 
-    public setScrollFactor(factor: number): void {
+    public setScrollFactor(factor: number): this {
         this.container.setScrollFactor(factor);
         this.background.setScrollFactor(factor);
         this.border.setScrollFactor(factor);
         this.labelText.setScrollFactor(factor);
+        return this;
     }
 
-    public setDepth(depth: number): void {
+    public setDepth(depth: number): this {
         this.container.setDepth(depth);
+        return this;
     }
 
     public destroy(): void {

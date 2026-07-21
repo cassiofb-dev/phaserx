@@ -6,10 +6,13 @@ export class PlayerShip {
     private shipGraphics: GameObjects.Graphics;
     private shadowGlow: GameObjects.Rectangle;
     private shieldRing: GameObjects.Graphics;
+    private wingLights: GameObjects.Graphics;
     private thrusterEmitter?: GameObjects.Particles.ParticleEmitter;
     private targetX: number;
     private targetAngle = 0;
     private currentAngle = 0;
+    private targetScaleY = 1.0;
+    private currentScaleY = 1.0;
     private isInvulnerable = false;
 
     constructor(scene: Scene, startX: number, startY: number) {
@@ -17,32 +20,49 @@ export class PlayerShip {
         this.targetX = startX;
 
         // Under-ship neon shadow glow
-        this.shadowGlow = this.scene.add.rectangle(startX, startY + 10, 110, 20, 0x31f5ff, 0.25);
+        this.shadowGlow = this.scene.add.rectangle(startX, startY + 12, 110, 20, 0x31f5ff, 0.28);
 
         // Shield graphics ring
         this.shieldRing = this.scene.add.graphics();
         this.drawShieldGraphics();
         this.shieldRing.setVisible(false);
 
+        // Wing tip pulsing light graphics
+        this.wingLights = this.scene.add.graphics();
+        this.drawWingLights();
+
         // Vector graphics ship geometry
         this.shipGraphics = this.scene.add.graphics();
         this.drawShipGraphics();
 
         // Main Container
-        this.container = this.scene.add.container(startX, startY, [this.shieldRing, this.shipGraphics]);
+        this.container = this.scene.add.container(startX, startY, [
+            this.shieldRing,
+            this.shipGraphics,
+            this.wingLights
+        ]);
         this.container.setDepth(10);
 
         // Setup Thruster Particle Emitter
         this.createThruster();
 
-        // Idle hover animation
+        // Idle hover animation (sine wave pitch & elevation)
         this.scene.tweens.add({
             targets: this.container,
             y: startY - 8,
-            duration: 350,
+            duration: 380,
             yoyo: true,
             repeat: -1,
             ease: 'Sine.easeInOut'
+        });
+
+        // Wingtip energy pulse animation
+        this.scene.tweens.add({
+            targets: this.wingLights,
+            alpha: { from: 0.3, to: 1 },
+            duration: 250,
+            yoyo: true,
+            repeat: -1
         });
     }
 
@@ -61,7 +81,7 @@ export class PlayerShip {
         // Cockpit Glass Glow (Pink / Magenta accent)
         g.fillStyle(0xff3da5, 1);
         g.fillRect(-8, -14, 16, 28);
-        g.fillStyle(0xffffff, 0.9);
+        g.fillStyle(0xffffff, 0.95);
         g.fillRect(-3, -28, 6, 24);
 
         // Outer white crisp outline
@@ -74,33 +94,45 @@ export class PlayerShip {
         g.fillRect(31, 12, 5, 20);
     }
 
+    private drawWingLights(): void {
+        const g = this.wingLights;
+        g.clear();
+        g.fillStyle(0xffffff, 1);
+        g.fillCircle(-33.5, 30, 4);
+        g.fillCircle(33.5, 30, 4);
+
+        g.fillStyle(0xff3da5, 0.8);
+        g.fillCircle(0, -40, 3);
+    }
+
     private drawShieldGraphics(): void {
         const g = this.shieldRing;
         g.clear();
         g.lineStyle(3, 0x31f5ff, 0.85);
-        g.strokeCircle(0, 0, 54);
-        g.fillStyle(0x31f5ff, 0.15);
-        g.fillCircle(0, 0, 54);
+        g.strokeCircle(0, 0, 56);
+        g.fillStyle(0x31f5ff, 0.18);
+        g.fillCircle(0, 0, 56);
     }
 
     private createThruster(): void {
         if (!this.scene.textures.exists('spark')) return;
 
         this.thrusterEmitter = this.scene.add.particles(this.targetX, this.container.y + 32, 'spark', {
-            speedY: { min: 180, max: 400 },
+            speedY: { min: 200, max: 480 },
             speedX: { min: -25, max: 25 },
-            scale: { start: 0.7, end: 0 },
-            alpha: { start: 0.9, end: 0 },
+            scale: { start: 0.8, end: 0 },
+            alpha: { start: 0.95, end: 0 },
             tint: [0x31f5ff, 0xff3da5, 0xffffff],
-            lifespan: 300,
-            frequency: 30
+            lifespan: 320,
+            frequency: 24
         });
         this.thrusterEmitter.setDepth(9);
     }
 
     public moveToLane(laneX: number, direction: number): void {
         this.targetX = laneX;
-        this.targetAngle = direction * 16; // Bank tilt left (-16deg) or right (+16deg)
+        this.targetAngle = direction * 18; // Bank tilt left (-18deg) or right (+18deg)
+        this.targetScaleY = 0.92; // Slight squash during turn
 
         this.scene.tweens.killTweensOf(this.container);
         this.scene.tweens.killTweensOf(this.shadowGlow);
@@ -108,18 +140,23 @@ export class PlayerShip {
         this.scene.tweens.add({
             targets: [this.container, this.shadowGlow],
             x: laneX,
-            duration: 120,
+            duration: 130,
             ease: 'Cubic.easeOut',
             onComplete: () => {
                 this.targetAngle = 0;
+                this.targetScaleY = 1.0;
             }
         });
     }
 
     public update(deltaSeconds: number): void {
-        // Interpolate angle tilt smooth using imported PhaserMath
+        // Interpolate angle tilt smooth
         this.currentAngle = PhaserMath.Linear(this.currentAngle, this.targetAngle, deltaSeconds * 18);
         this.container.setAngle(this.currentAngle);
+
+        // Interpolate scale Y squash/stretch
+        this.currentScaleY = PhaserMath.Linear(this.currentScaleY, this.targetScaleY, deltaSeconds * 15);
+        this.container.setScale(1.0, this.currentScaleY);
 
         // Update thruster emitter position
         if (this.thrusterEmitter) {
@@ -128,12 +165,13 @@ export class PlayerShip {
 
         // Shield animation wobble if invulnerable
         if (this.isInvulnerable) {
-            const alpha = 0.4 + Math.sin(this.scene.time.now * 0.015) * 0.4;
+            const alpha = 0.4 + Math.sin(this.scene.time.now * 0.018) * 0.45;
             this.shieldRing.setAlpha(alpha);
+            this.shieldRing.setRotation(this.scene.time.now * 0.003);
         }
     }
 
-    public setInvulnerable(active: boolean, durationMs = 1300): void {
+    public setInvulnerable(active: boolean, durationMs = 1400): void {
         this.isInvulnerable = active;
         this.shieldRing.setVisible(active);
 
@@ -142,9 +180,9 @@ export class PlayerShip {
             this.scene.tweens.add({
                 targets: this.container,
                 alpha: 1,
-                duration: 120,
+                duration: 110,
                 yoyo: true,
-                repeat: Math.floor(durationMs / 240),
+                repeat: Math.floor(durationMs / 220),
                 onComplete: () => {
                     this.container.setAlpha(1);
                     this.isInvulnerable = false;
@@ -156,6 +194,16 @@ export class PlayerShip {
 
     public triggerHitEffect(): void {
         this.scene.cameras.main.shake(180, 0.015);
+
+        // Quick flash & vibration on ship container
+        this.scene.tweens.add({
+            targets: this.container,
+            scaleX: 1.25,
+            scaleY: 0.75,
+            duration: 80,
+            yoyo: true,
+            ease: 'Quad.easeOut'
+        });
     }
 
     public get x(): number { return this.container.x; }

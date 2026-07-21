@@ -1,4 +1,4 @@
-import { Scene } from 'phaser';
+import { Input, Scene } from 'phaser';
 import { GlassPanel } from '../objects/ui/GlassPanel';
 import { Button } from '../objects/ui/Button';
 
@@ -7,18 +7,25 @@ interface EndData { cleared?: boolean; stage?: number; ending?: string; }
 const CYAN = 0x31f5ff;
 const PINK = 0xff3da5;
 
-export class GameOver extends Scene
-{
-    constructor () { super('GameOver'); }
+export class GameOver extends Scene {
+    constructor() { super('GameOver'); }
 
-    create (data: EndData): void
-    {
+    create(data: EndData): void {
         const cleared = data.cleared ?? false;
+
+        this.cameras.main.fadeIn(400, 0, 0, 0);
         this.cameras.main.setBackgroundColor(0x0a1c3f);
+
+        // Keyboard ENTER listener to return to hangar
+        if (this.input.keyboard) {
+            const enterKey = this.input.keyboard.addKey(Input.Keyboard.KeyCodes.ENTER);
+            enterKey.once('down', () => this.returnToHangar());
+        }
 
         // Main Report Panel
         const strokeColor = cleared ? CYAN : PINK;
-        new GlassPanel(this, 512, 384, 900, 540, strokeColor, 0x0f2c52, 0.98);
+        const panel = new GlassPanel(this, 512, 384, 900, 540, strokeColor, 0x0f2c52, 0.98);
+        panel.animateIn(200);
 
         // Header Title
         this.add.text(512, 215, cleared ? 'MISSION DEBRIEF // SUCCESS' : 'SYSTEM CRASH // TERMINATED', {
@@ -69,20 +76,28 @@ export class GameOver extends Scene
         }
 
         // Return Button
-        new Button(
+        const returnBtn = new Button(
             this,
             512,
             475,
-            'RETURN TO HANGAR',
-            () => this.scene.start('MainMenu'),
-            330,
+            'RETURN TO HANGAR [ENTER]',
+            () => this.returnToHangar(),
+            350,
             cleared ? 0x12365e : 0x611b49,
             strokeColor,
             56
         );
+        returnBtn.animateIn(300);
 
         // Particles
         this.createParticles(cleared);
+    }
+
+    private returnToHangar(): void {
+        this.cameras.main.fadeOut(350);
+        this.time.delayedCall(360, () => {
+            this.scene.start('MainMenu');
+        });
     }
 
     private createParticles(cleared: boolean): void {
