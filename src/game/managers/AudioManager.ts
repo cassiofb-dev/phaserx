@@ -28,7 +28,10 @@ export class AudioManager {
     }
 
     public playStageMusic(stage: number): void {
-        if (!this.isMusicEnabled()) return;
+        if (!this.isMusicEnabled()) {
+            this.stopMusic();
+            return;
+        }
 
         this.stopMusic();
         const key = `stage-${stage}`;
@@ -36,6 +39,22 @@ export class AudioManager {
         if (vol > 0 && this.scene.cache.audio.exists(key)) {
             this.musicTrack = this.scene.sound.add(key, { volume: vol, loop: true });
             this.musicTrack.play();
+        }
+    }
+
+    public playRandomMusic(): void {
+        if (!this.isMusicEnabled()) {
+            this.stopMusic();
+            return;
+        }
+
+        const randomStage = Math.floor(Math.random() * 5) + 1;
+        this.playStageMusic(randomStage);
+    }
+
+    public setMusicVolume(vol: number): void {
+        if (this.musicTrack && 'setVolume' in this.musicTrack) {
+            (this.musicTrack as Sound.HTML5AudioSound | Sound.WebAudioSound).setVolume(vol);
         }
     }
 
@@ -82,9 +101,13 @@ export class AudioManager {
     }
 
     public stopMusic(): void {
-        this.musicTrack?.stop();
-        this.musicTrack?.destroy();
-        this.musicTrack = undefined;
+        if (this.musicTrack) {
+            this.musicTrack.stop();
+            this.musicTrack.destroy();
+            this.musicTrack = undefined;
+        }
+        // Also ensure no orphaned music audio instances continue playing
+        this.scene.sound.stopAll();
     }
 
     public stopFlightAmbient(): void {

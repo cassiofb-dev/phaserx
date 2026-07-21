@@ -2,6 +2,7 @@ import { GameObjects, Input, Scene } from 'phaser';
 import { GridBackground } from '../objects/GridBackground';
 import { Button } from '../objects/ui/Button';
 import { GlassPanel } from '../objects/ui/GlassPanel';
+import { AudioManager } from '../managers/AudioManager';
 
 export type Difficulty = 'easy' | 'medium' | 'hard' | 'hardcore';
 
@@ -24,7 +25,9 @@ const PINK = 0xff3da5;
 
 export class MainMenu extends Scene {
     private gridBg!: GridBackground;
+    private audioMgr!: AudioManager;
     private titleText!: GameObjects.Text;
+    private difficultyDescText!: GameObjects.Text;
     private selectedDifficulty: Difficulty = 'medium';
     private musicOn = true;
     private musicVolume = 1;
@@ -32,6 +35,10 @@ export class MainMenu extends Scene {
     private effectsVolume = 0.80;
     private showPhases = false;
     private difficultyButtons: Record<Difficulty, Button | null> = { easy: null, medium: null, hard: null, hardcore: null };
+    private musicToggleBtn?: Button;
+    private musicVolBtn?: Button;
+    private fxToggleBtn?: Button;
+    private fxVolBtn?: Button;
 
     constructor() {
         super('MainMenu');
@@ -50,8 +57,12 @@ export class MainMenu extends Scene {
         this.cameras.main.fadeIn(400, 0, 0, 0);
         this.cameras.main.setBackgroundColor(0x0a1c3f);
 
+        // Audio Manager - Play a random music track in the Main Menu
+        this.audioMgr = new AudioManager(this);
+        this.audioMgr.playRandomMusic();
+
         // Synthwave 3D perspective grid background with planets and stars
-        this.gridBg = new GridBackground(this, 1);
+        this.gridBg = new GridBackground(this, Math.floor(Math.random() * 5) + 1);
 
         // Keyboard ENTER key listener to quickly start mission
         if (this.input.keyboard) {
@@ -59,7 +70,7 @@ export class MainMenu extends Scene {
             enterKey.once('down', () => {
                 if (!this.showPhases) {
                     this.saveRegistryOptions();
-                    this.scene.restart({ showPhaseSelector: true });
+                    this.openPhaseSelectorView();
                 } else {
                     const unlocked = (this.game.registry.get('unlockedStage') as number | undefined) ?? 1;
                     this.startPhase(unlocked);
@@ -101,10 +112,14 @@ export class MainMenu extends Scene {
             return;
         }
 
+        this.createMainView();
+    }
+
+    private createMainView(): void {
         // Start / Launch Run Button
         const startBtn = new Button(this, 512, 222, 'START MISSION [ENTER]', () => {
             this.saveRegistryOptions();
-            this.scene.restart({ showPhaseSelector: true });
+            this.openPhaseSelectorView();
         }, 310, PINK, CYAN, 50);
         startBtn.setDepth(10);
         startBtn.animateIn(100);
@@ -123,7 +138,7 @@ export class MainMenu extends Scene {
                 () => {
                     this.selectedDifficulty = diffKey;
                     this.saveRegistryOptions();
-                    this.scene.restart();
+                    this.updateDifficultySelectionUI();
                 },
                 154,
                 isSelected ? CYAN : 0x12365e,
@@ -135,20 +150,21 @@ export class MainMenu extends Scene {
             this.difficultyButtons[diffKey] = btn;
         });
 
-        // Difficulty Rule Description
-        const rule = DIFFICULTIES[this.selectedDifficulty];
-        this.add.text(
+        // Difficulty Rule Description Text
+        this.difficultyDescText = this.add.text(
             512,
             400,
-            `${rule.lives} LIFE${rule.lives > 1 ? 'S' : ''}  //  SURGE EACH ${rule.speedEvery}S  //  STAGE GOAL: ${this.formatTime(rule.goal)}`,
+            '',
             { fontFamily: 'monospace', fontSize: 14, fontStyle: 'bold', color: '#ffffff' }
         ).setOrigin(0.5).setDepth(10);
+
+        this.updateDifficultySelectionUI();
 
         // Audio & Options Grid (Y = 470 & 532)
         new Button(this, 230, 470, 'PILOT GUIDE', () => this.showGuide(), 200, 0x12365e, CYAN, 44).setDepth(10).animateIn(250);
 
-        // Music Controls
-        new Button(
+        // Music Toggle Button
+        this.musicToggleBtn = new Button(
             this,
             480,
             470,
@@ -156,7 +172,13 @@ export class MainMenu extends Scene {
             () => {
                 this.musicOn = !this.musicOn;
                 this.saveRegistryOptions();
-                this.scene.restart();
+                this.musicToggleBtn?.setText(`MUSIC: ${this.musicOn ? 'ON' : 'OFF'}`)
+                    .setStroke(this.musicOn ? CYAN : 0x4a6585);
+                if (this.musicOn) {
+                    this.audioMgr.playRandomMusic();
+                } else {
+                    this.audioMgr.stopMusic();
+                }
             },
             210,
             0x12365e,
@@ -164,7 +186,8 @@ export class MainMenu extends Scene {
             44
         ).setDepth(10).animateIn(280);
 
-        new Button(
+        // Music Volume Button
+        this.musicVolBtn = new Button(
             this,
             740,
             470,
@@ -173,7 +196,10 @@ export class MainMenu extends Scene {
                 this.musicVolume = this.cycleVolume(this.musicVolume);
                 if (this.musicVolume > 0) this.musicOn = true;
                 this.saveRegistryOptions();
-                this.scene.restart();
+                this.musicVolBtn?.setText(`MUSIC VOL: ${Math.round(this.musicVolume * 100)}%`);
+                this.musicToggleBtn?.setText(`MUSIC: ${this.musicOn ? 'ON' : 'OFF'}`)
+                    .setStroke(this.musicOn ? CYAN : 0x4a6585);
+                this.audioMgr.setMusicVolume(this.musicVolume);
             },
             240,
             0x12365e,
@@ -181,8 +207,8 @@ export class MainMenu extends Scene {
             44
         ).setDepth(10).animateIn(310);
 
-        // FX Controls
-        new Button(
+        // FX Toggle Button
+        this.fxToggleBtn = new Button(
             this,
             480,
             532,
@@ -190,7 +216,8 @@ export class MainMenu extends Scene {
             () => {
                 this.effectsOn = !this.effectsOn;
                 this.saveRegistryOptions();
-                this.scene.restart();
+                this.fxToggleBtn?.setText(`SOUND FX: ${this.effectsOn ? 'ON' : 'OFF'}`)
+                    .setStroke(this.effectsOn ? CYAN : 0x4a6585);
             },
             210,
             0x12365e,
@@ -198,7 +225,8 @@ export class MainMenu extends Scene {
             44
         ).setDepth(10).animateIn(340);
 
-        new Button(
+        // FX Volume Button
+        this.fxVolBtn = new Button(
             this,
             740,
             532,
@@ -207,7 +235,9 @@ export class MainMenu extends Scene {
                 this.effectsVolume = this.cycleVolume(this.effectsVolume);
                 if (this.effectsVolume > 0) this.effectsOn = true;
                 this.saveRegistryOptions();
-                this.scene.restart();
+                this.fxVolBtn?.setText(`FX VOL: ${Math.round(this.effectsVolume * 100)}%`);
+                this.fxToggleBtn?.setText(`SOUND FX: ${this.effectsOn ? 'ON' : 'OFF'}`)
+                    .setStroke(this.effectsOn ? CYAN : 0x4a6585);
             },
             240,
             0x12365e,
@@ -218,6 +248,52 @@ export class MainMenu extends Scene {
         // Footer info text
         this.add.text(512, 682, '5 FACTORY STAGES  •  DYNAMIC TRANSMISSIONS', this.subHeaderStyle()).setOrigin(0.5).setDepth(10);
         this.add.text(512, 712, 'A / D  OR  ← / →  TO CHANGE LANES  //  ENTER FOR MENU', { ...this.subHeaderStyle(), color: '#ffffff' }).setOrigin(0.5).setDepth(10);
+    }
+
+    private updateDifficultySelectionUI(): void {
+        const options = Object.keys(DIFFICULTIES) as Difficulty[];
+        options.forEach(diffKey => {
+            const btn = this.difficultyButtons[diffKey];
+            if (btn) {
+                const isSelected = diffKey === this.selectedDifficulty;
+                btn.setFill(isSelected ? CYAN : 0x12365e);
+                btn.setStroke(isSelected ? 0xffffff : 0x31f5ff);
+            }
+        });
+
+        const rule = DIFFICULTIES[this.selectedDifficulty];
+        if (this.difficultyDescText) {
+            this.difficultyDescText.setText(
+                `${rule.lives} LIFE${rule.lives > 1 ? 'S' : ''}  //  SURGE EACH ${rule.speedEvery}S  //  STAGE GOAL: ${this.formatTime(rule.goal)}`
+            );
+        }
+    }
+
+    private openPhaseSelectorView(): void {
+        this.showPhases = true;
+        this.children.removeAll();
+        this.cameras.main.fadeIn(300);
+
+        // Re-add background & title
+        this.gridBg = new GridBackground(this, Math.floor(Math.random() * 5) + 1);
+        this.titleText = this.add.text(512, 74, 'PHASERX', {
+            fontFamily: 'monospace',
+            fontSize: 62,
+            fontStyle: 'bold',
+            color: '#ffffff',
+            align: 'center',
+            stroke: '#08487e',
+            strokeThickness: 8
+        }).setOrigin(0.5).setDepth(10);
+
+        this.add.text(512, 134, 'DODGE // SURVIVE // ACCELERATE', {
+            fontFamily: 'monospace',
+            fontSize: 16,
+            fontStyle: 'bold',
+            color: '#31f5ff'
+        }).setOrigin(0.5).setDepth(10);
+
+        this.createPhaseSelector();
     }
 
     update(_time: number, delta: number): void {
@@ -304,7 +380,28 @@ export class MainMenu extends Scene {
             }
         }
 
-        const backBtn = new Button(this, 512, 615, 'BACK', () => this.scene.restart({ showPhaseSelector: false }), 190, 0x12365e);
+        const backBtn = new Button(this, 512, 615, 'BACK', () => {
+            this.showPhases = false;
+            this.children.removeAll();
+            this.cameras.main.fadeIn(300);
+            this.gridBg = new GridBackground(this, Math.floor(Math.random() * 5) + 1);
+            this.titleText = this.add.text(512, 74, 'PHASERX', {
+                fontFamily: 'monospace',
+                fontSize: 62,
+                fontStyle: 'bold',
+                color: '#ffffff',
+                align: 'center',
+                stroke: '#08487e',
+                strokeThickness: 8
+            }).setOrigin(0.5).setDepth(10);
+            this.add.text(512, 134, 'DODGE // SURVIVE // ACCELERATE', {
+                fontFamily: 'monospace',
+                fontSize: 16,
+                fontStyle: 'bold',
+                color: '#31f5ff'
+            }).setOrigin(0.5).setDepth(10);
+            this.createMainView();
+        }, 190, 0x12365e);
         backBtn.setDepth(10);
         backBtn.animateIn(350);
 
@@ -312,6 +409,7 @@ export class MainMenu extends Scene {
     }
 
     private startPhase(stage: number): void {
+        this.audioMgr.stopMusic();
         this.cameras.main.fadeOut(350);
         this.time.delayedCall(360, () => {
             this.scene.start('Game', { stage });
