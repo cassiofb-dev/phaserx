@@ -4,6 +4,7 @@ import { STAGE_THEMES } from '../config/StageThemeConfig';
 import { GridBackground } from '../objects/GridBackground';
 import { PlayerShip } from '../objects/PlayerShip';
 import { BarrierManager } from '../objects/BarrierManager';
+import { PowerUpManager, PowerUpType } from '../objects/PowerUpManager';
 import { HUD } from '../objects/ui/HUD';
 import { EffectsManager } from '../managers/EffectsManager';
 import { AudioManager } from '../managers/AudioManager';
@@ -28,12 +29,16 @@ export class Game extends Scene {
     private maxLives = 3;
     private baseSpeed = 500;
     private spawnElapsed = 0;
+    private powerupSpawnElapsed = 0;
+    private slowTimer = 0;
+    private breakerTimer = 0;
     private shieldUntil = 0;
     private lane = 0;
 
     private gridBg!: GridBackground;
     private playerShip!: PlayerShip;
     private barrierMgr!: BarrierManager;
+    private powerupMgr!: PowerUpManager;
     private hud!: HUD;
     private fxMgr!: EffectsManager;
     private audioMgr!: AudioManager;
@@ -64,6 +69,9 @@ export class Game extends Scene {
         this.elapsed = 0;
         this.speedLevel = 0;
         this.spawnElapsed = 0;
+        this.powerupSpawnElapsed = 0;
+        this.slowTimer = 0;
+        this.breakerTimer = 0;
         this.shieldUntil = 0;
         this.lane = 0;
         this.isEnding = false;
@@ -85,6 +93,7 @@ export class Game extends Scene {
         this.gridBg = new GridBackground(this, this.stage);
         this.playerShip = new PlayerShip(this, this.laneX(this.lane), 650);
         this.barrierMgr = new BarrierManager(this);
+        this.powerupMgr = new PowerUpManager(this);
         this.hud = new HUD(this, () => this.togglePauseMenu());
         this.hud.setStageAccent(theme.hudAccent);
 
@@ -105,21 +114,30 @@ export class Game extends Scene {
         const deltaSeconds = Math.min(delta, 50) / 1000;
         this.elapsed += deltaSeconds;
         this.spawnElapsed += deltaSeconds;
+        this.powerupSpawnElapsed += deltaSeconds;
 
-        const currentSpeed = this.getCurrentSpeed();
+        // PowerUp Active Timer Countdowns
+        if (this.slowTimer > 0) this.slowTimer = Math.max(0, this.slowTimer - deltaSeconds);
+        if (this.breakerTimer > 0) this.breakerTimer = Math.max(0, this.breakerTimer - deltaSeconds);
+
+        const rawSpeed = this.getCurrentSpeed();
+        const currentSpeed = this.slowTimer > 0 ? rawSpeed * 0.5 : rawSpeed;
+
         const goal = DIFFICULTIES[this.difficulty].goal;
         const remainingTime = Math.max(0, Math.ceil(goal - this.elapsed));
         const speedEvery = DIFFICULTIES[this.difficulty].speedEvery;
         const surgeCountdown = Math.max(0, Math.ceil(speedEvery - (this.elapsed % speedEvery)));
 
-        // Update HUD
+        // Update HUD with powerup timers
         this.hud.update(
             remainingTime,
             this.lives,
             this.maxLives,
             this.stage,
             currentSpeed,
-            surgeCountdown
+            surgeCountdown,
+            this.slowTimer,
+            this.breakerTimer
         );
 
         // Update Transmissions
@@ -131,6 +149,20 @@ export class Game extends Scene {
         // Check Speed Acceleration
         this.checkAcceleration();
 
+        // Spawn Powerups periodically (every 11 seconds)
+        if (this.powerupSpawnElapsed >= 11) {
+            this.powerupSpawnElapsed = 0;
+            this.powerupMgr.spawnPowerUp(this.lane, currentSpeed);
+        }
+
+        // Update Powerups & Collection Detection
+        this.powerupMgr.update(
+            deltaSeconds,
+            this.lane,
+            this.playerShip.y,
+            (type) => this.handlePowerUpCollect(type)
+        );
+
         // Spawn Barriers
         const gap = Math.max(0.35, 0.8 - this.speedLevel * 0.045 - (this.stage - 1) * 0.035);
         if (this.spawnElapsed >= gap) {
@@ -140,25 +172,48 @@ export class Game extends Scene {
 
         // Update Barriers & Collision Detection
         const isShielded = this.time.now < this.shieldUntil;
+        const isBreakerActive = this.breakerTimer > 0;
         this.barrierMgr.update(
             deltaSeconds,
             this.lane,
             this.playerShip.y,
             isShielded,
+            isBreakerActive,
             this.audioMgr.isEffectsEnabled(),
-            () => {
-                this.audioMgr.playSwoosh();
-                this.fxMgr.triggerNearMiss(this.playerShip.x, this.playerShip.y - 40);
+            (direction) => {
+                // Directional swoosh sound 1s earlier, no particle animation effect on pass
+                this.audioMgr.playSwoosh(direction);
             },
             () => this.handleHit(),
+            () => {
+                this.audioMgr.playBarrierShatter();
+                this.hud.flashAlert('BARRIER SHATTERED!', '#ffaa00');
+            },
             this.stage
         );
 
-        // Update Player Ship smooth movements
+        // Update Player Ship visual state & smooth movements
+        this.playerShip.setBreakerVisual(isBreakerActive);
         this.playerShip.update(deltaSeconds);
 
         // Keep Camera Centered on Ship X offset
         this.cameras.main.scrollX = this.playerShip.x - WIDTH / 2;
+    }
+
+    private handlePowerUpCollect(type: PowerUpType): void {
+        if (type === 'slow') {
+            this.slowTimer = 30;
+            this.audioMgr.playPowerUpSound('slow');
+            this.hud.flashAlert('POWERUP: SLOW MOTION (30S)', '#31f5ff');
+        } else if (type === 'break') {
+            this.breakerTimer = 30;
+            this.audioMgr.playPowerUpSound('break');
+            this.hud.flashAlert('POWERUP: BARRIER BREAKER (30S)', '#ffaa00');
+        } else if (type === 'life') {
+            this.lives = Math.min(this.lives + 1, this.maxLives + 2);
+            this.audioMgr.playPowerUpSound('life');
+            this.hud.flashAlert('POWERUP: +1 RECOVERY LIFE', '#ff3da5');
+        }
     }
 
     private createInput(): void {
@@ -226,6 +281,7 @@ export class Game extends Scene {
         this.isEnding = true;
 
         this.transmissionMgr?.destroy();
+        this.powerupMgr?.clearAll();
         this.audioMgr.stopAll();
 
         const message = cleared

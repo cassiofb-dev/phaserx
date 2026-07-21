@@ -69,10 +69,33 @@ export class AudioManager {
         }
     }
 
-    public playSwoosh(): void {
-        const vol = 0.4 * this.getEffectsVolume();
+    public playSwoosh(direction: 'left' | 'right' = 'left'): void {
+        const vol = 0.5 * this.getEffectsVolume();
         if (vol > 0 && this.scene.cache.audio.exists('swoosh')) {
-            this.scene.sound.play('swoosh', { volume: vol });
+            const pan = direction === 'left' ? -0.85 : 0.85;
+            const rate = direction === 'left' ? 0.88 : 1.18;
+            this.scene.sound.play('swoosh', { volume: vol, pan, rate });
+        }
+    }
+
+    public playPowerUpSound(type: 'slow' | 'break' | 'life'): void {
+        const vol = 0.75 * this.getEffectsVolume();
+        if (vol <= 0) return;
+
+        // Use surge / boom / audio cache with rate modulation as high-tech sound feedback
+        if (type === 'slow' && this.scene.cache.audio.exists('swoosh')) {
+            this.scene.sound.play('swoosh', { volume: vol, rate: 0.5, pan: 0 });
+        } else if (type === 'break' && this.scene.cache.audio.exists('surge')) {
+            this.scene.sound.play('surge', { volume: vol, rate: 1.4, pan: 0 });
+        } else if (type === 'life' && this.scene.cache.audio.exists('surge')) {
+            this.scene.sound.play('surge', { volume: vol, rate: 1.8, pan: 0 });
+        }
+    }
+
+    public playBarrierShatter(): void {
+        const vol = 0.85 * this.getEffectsVolume();
+        if (vol > 0 && this.scene.cache.audio.exists('boom')) {
+            this.scene.sound.play('boom', { volume: vol, rate: 1.5 });
         }
     }
 

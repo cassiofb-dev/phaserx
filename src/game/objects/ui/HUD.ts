@@ -9,6 +9,7 @@ export class HUD {
     private livesText: GameObjects.Text;
     private stageText: GameObjects.Text;
     private speedText: GameObjects.Text;
+    private powerupText: GameObjects.Text;
     private alertText: GameObjects.Text;
     private pauseButton: Button;
     private accentColor = '#31f5ff';
@@ -53,8 +54,12 @@ export class HUD {
         this.speedText = this.scene.add.text(512, 85, '', this.hudTextStyle(14, '#7da9c8'))
             .setOrigin(0.5);
 
+        // Active Powerups status bar
+        this.powerupText = this.scene.add.text(512, 108, '', this.hudTextStyle(13, '#31f5ff'))
+            .setOrigin(0.5);
+
         // Flash Alert text banner (e.g. VELOCITY SURGE! / HULL HIT!)
-        this.alertText = this.scene.add.text(512, 135, '', this.hudTextStyle(22, '#ffffff'))
+        this.alertText = this.scene.add.text(512, 145, '', this.hudTextStyle(22, '#ffffff'))
             .setOrigin(0.5)
             .setAlpha(0);
 
@@ -63,6 +68,7 @@ export class HUD {
             this.timerText,
             this.stageText,
             this.speedText,
+            this.powerupText,
             this.alertText
         ]);
 
@@ -89,7 +95,9 @@ export class HUD {
         maxLives: number,
         stage: number,
         currentSpeed: number,
-        secondsToSurge: number
+        secondsToSurge: number,
+        slowTimer = 0,
+        breakerTimer = 0
     ): void {
         const mins = Math.floor(remainingSeconds / 60);
         const secs = String(remainingSeconds % 60).padStart(2, '0');
@@ -109,6 +117,21 @@ export class HUD {
 
         this.stageText.setText(`STAGE 0${stage}/05`);
         this.speedText.setText(`SPEED ${Math.round(currentSpeed)} KM/H  //  NEXT SURGE ${Math.max(0, Math.ceil(secondsToSurge))}S`);
+
+        // Format active powerup tags
+        const activeTags: string[] = [];
+        if (slowTimer > 0) {
+            activeTags.push(`[ SLOW MO: ${Math.ceil(slowTimer)}S ]`);
+        }
+        if (breakerTimer > 0) {
+            activeTags.push(`[ BARRIER BREAKER: ${Math.ceil(breakerTimer)}S ]`);
+        }
+        if (activeTags.length > 0) {
+            this.powerupText.setText(activeTags.join('   '));
+            this.powerupText.setVisible(true);
+        } else {
+            this.powerupText.setVisible(false);
+        }
     }
 
     public flashAlert(text: string, colorHex: string): void {

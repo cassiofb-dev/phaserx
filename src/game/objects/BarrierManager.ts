@@ -109,22 +109,35 @@ export class BarrierManager {
         playerLane: number,
         playerY: number,
         isShielded: boolean,
+        isBreakerActive: boolean,
         _effectsOn: boolean,
-        onNearMiss: () => void,
+        onNearMiss: (direction: 'left' | 'right') => void,
         onCollision: () => void,
+        onBreakBarrier?: () => void,
         stage = 1
     ): void {
         const theme = STAGE_THEMES[stage] ?? STAGE_THEMES[1];
+        const playerX = this.width / 2 + playerLane * this.laneWidth;
 
         this.barriers = this.barriers.filter(barrier => {
             barrier.container.y += barrier.speed * deltaSeconds;
 
-            // Near miss detection & swoosh audio trigger
-            const distanceY = barrier.container.y - playerY;
-            const isNear = Math.abs(barrier.lane - playerLane) <= 1 && distanceY > 15 && distanceY < 60;
-            if (!barrier.swooshPlayed && isNear) {
+            // Audio trigger 1 second earlier due to track delay (distanceY <= barrier.speed * 1.0)
+            const leadTimeY = playerY - barrier.speed * 1.0;
+            if (!barrier.swooshPlayed && barrier.container.y >= leadTimeY && barrier.container.y < playerY + 40) {
                 barrier.swooshPlayed = true;
-                onNearMiss();
+
+                // Determine whether barrier is to the left or right of the player
+                let direction: 'left' | 'right' = 'left';
+                if (barrier.container.x < playerX || barrier.lane < playerLane) {
+                    direction = 'left';
+                } else if (barrier.container.x > playerX || barrier.lane > playerLane) {
+                    direction = 'right';
+                } else {
+                    direction = 'left';
+                }
+
+                onNearMiss(direction);
             }
 
             // Screen boundary cleanup
@@ -135,11 +148,19 @@ export class BarrierManager {
 
             // Hit collision detection
             const isCollision = barrier.lane === playerLane && Math.abs(barrier.container.y - playerY) < 42;
-            if (isCollision && !isShielded) {
-                this.triggerExplosion(barrier.container.x, barrier.container.y, theme.explosionTints);
-                barrier.container.destroy();
-                onCollision();
-                return false;
+            if (isCollision) {
+                if (isBreakerActive) {
+                    // Barrier Breaker powerup: Shatter barrier safely without damage
+                    this.triggerExplosion(barrier.container.x, barrier.container.y, [0xffaa00, 0xffffff, 0xff3da5]);
+                    barrier.container.destroy();
+                    if (onBreakBarrier) onBreakBarrier();
+                    return false;
+                } else if (!isShielded) {
+                    this.triggerExplosion(barrier.container.x, barrier.container.y, theme.explosionTints);
+                    barrier.container.destroy();
+                    onCollision();
+                    return false;
+                }
             }
 
             return true;

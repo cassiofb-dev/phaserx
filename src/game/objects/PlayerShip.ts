@@ -6,6 +6,7 @@ export class PlayerShip {
     private shipGraphics: GameObjects.Graphics;
     private shadowGlow: GameObjects.Rectangle;
     private shieldRing: GameObjects.Graphics;
+    private breakerRing: GameObjects.Graphics;
     private wingLights: GameObjects.Graphics;
     private thrusterEmitter?: GameObjects.Particles.ParticleEmitter;
     private targetX: number;
@@ -27,6 +28,11 @@ export class PlayerShip {
         this.drawShieldGraphics();
         this.shieldRing.setVisible(false);
 
+        // Breaker energy aura ring
+        this.breakerRing = this.scene.add.graphics();
+        this.drawBreakerGraphics();
+        this.breakerRing.setVisible(false);
+
         // Wing tip pulsing light graphics
         this.wingLights = this.scene.add.graphics();
         this.drawWingLights();
@@ -38,6 +44,7 @@ export class PlayerShip {
         // Main Container
         this.container = this.scene.add.container(startX, startY, [
             this.shieldRing,
+            this.breakerRing,
             this.shipGraphics,
             this.wingLights
         ]);
@@ -114,6 +121,27 @@ export class PlayerShip {
         g.fillCircle(0, 0, 56);
     }
 
+    private drawBreakerGraphics(): void {
+        const g = this.breakerRing;
+        g.clear();
+        g.lineStyle(3, 0xffaa00, 0.9);
+        g.strokeCircle(0, 0, 62);
+
+        // Outer energy spike accents
+        g.lineStyle(2, 0xffe680, 0.95);
+        for (let a = 0; a < Math.PI * 2; a += Math.PI / 4) {
+            const cos = Math.cos(a);
+            const sin = Math.sin(a);
+            g.lineBetween(cos * 58, sin * 58, cos * 68, sin * 68);
+        }
+        g.fillStyle(0xffaa00, 0.15);
+        g.fillCircle(0, 0, 62);
+    }
+
+    public setBreakerVisual(active: boolean): void {
+        this.breakerRing.setVisible(active);
+    }
+
     private createThruster(): void {
         if (!this.scene.textures.exists('spark')) return;
 
@@ -168,6 +196,13 @@ export class PlayerShip {
             const alpha = 0.4 + Math.sin(this.scene.time.now * 0.018) * 0.45;
             this.shieldRing.setAlpha(alpha);
             this.shieldRing.setRotation(this.scene.time.now * 0.003);
+        }
+
+        // Breaker aura spin & pulse if active
+        if (this.breakerRing.visible) {
+            this.breakerRing.setRotation(this.scene.time.now * 0.004);
+            const alpha = 0.75 + Math.sin(this.scene.time.now * 0.012) * 0.25;
+            this.breakerRing.setAlpha(alpha);
         }
     }
 
